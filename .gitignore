@@ -1,0 +1,9 @@
+**/.DS_Store
+*.local
+*.log
+.vscode
+.idea
+.npmrc
+node_modules
+dist
+coverage
