@@ -4,7 +4,7 @@ const copy = require("rollup-plugin-copy")
 const pick = require("@focme/rollup-plugin-pick")
 
 module.exports = {
-    input: "./lib/index.ts",
+    input: "./src/index.ts",
     output: [
         { dir: "./dist/esm", format: "esm" },
         // should change the name "project-name"
