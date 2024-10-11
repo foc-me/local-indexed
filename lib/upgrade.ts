@@ -1,7 +1,7 @@
 import { getIndexedDB } from "./indexed"
 
-export type LDBIndexOptionRecord = Record<string, { keyPath?: string | string[] } & IDBIndexParameters>
-export type LDBIndexOptionArray = Array<[string, (string | string[])?, IDBIndexParameters?]>
+export type IDBIndexOptionRecord = Record<string, { keyPath?: string | string[] } & IDBIndexParameters>
+export type IDBIndexOptionArray = Array<[string, (string | string[])?, IDBIndexParameters?]>
 
 /**
  * database store index construct
@@ -24,7 +24,7 @@ export type LDBIndexOptionArray = Array<[string, (string | string[])?, IDBIndexP
  * ]
  * ```
  */
-export type LDBIndexOption = LDBIndexOptionRecord | LDBIndexOptionArray
+export type IDBIndexOption = IDBIndexOptionRecord | IDBIndexOptionArray
 
 /**
  * database store construct
@@ -55,10 +55,10 @@ export type LDBIndexOption = LDBIndexOptionRecord | LDBIndexOptionArray
  * }
  * ```
  */
-export interface LDBStoreOption {
+export interface IDBStoreOption {
     autoIncrement?: boolean
     keyPath?: string | string[] | null
-    index?: LDBIndexOption
+    index?: IDBIndexOption
 }
 
 /**
@@ -69,7 +69,7 @@ export interface LDBStoreOption {
  * @param option store index construt
  * @returns LDBIndexOptionArray
  */
-function formatStoreIndex(option: LDBIndexOption): LDBIndexOptionArray {
+function formatStoreIndex(option: IDBIndexOption): IDBIndexOptionArray {
     if (Array.isArray(option)) {
         return option.map(item => {
             const [indexName, keyName, option] = item
@@ -91,7 +91,7 @@ function formatStoreIndex(option: LDBIndexOption): LDBIndexOptionArray {
  * @param option store construct
  * @param values initial values
  */
-function createStore(database: IDBDatabase, name: string, option: LDBStoreOption, values?: unknown[]) {
+function createStore(database: IDBDatabase, name: string, option: IDBStoreOption, values?: unknown[]) {
     const { keyPath, autoIncrement, index } = option
     const store = database.createObjectStore(name, { keyPath, autoIncrement })
 
@@ -116,6 +116,7 @@ function createStore(database: IDBDatabase, name: string, option: LDBStoreOption
 
 /**
  * delete store from database
+ * 
  * @param database database
  * @param name store name
  */
@@ -127,19 +128,20 @@ function deleteStore(database: IDBDatabase, name: string) {
  * the context in database upgrade callback
  * to create or delete store from database
  */
-interface LDBUpgradeContext {
-    createStore: (name: string, option: LDBStoreOption, values?: unknown[]) => void
+interface IDBUpgradeContext {
+    createStore: (name: string, option: IDBStoreOption, values?: unknown[]) => void
     deleteStore: (name: string) => void
 }
 
 /**
  * create a context object for upgrade callback
+ * 
  * @param database database
- * @returns LDBUpgradeContext
+ * @returns upgrade callback context
  */
-function createUpgradeContext(database: IDBDatabase): LDBUpgradeContext {
+function createUpgradeContext(database: IDBDatabase): IDBUpgradeContext {
     return {
-        createStore: (name: string, option: LDBStoreOption, values?: unknown[]) => {
+        createStore: (name: string, option: IDBStoreOption, values?: unknown[]) => {
             createStore(database, name, option, values)
         },
         deleteStore: (name: string) => {
@@ -151,11 +153,13 @@ function createUpgradeContext(database: IDBDatabase): LDBUpgradeContext {
 /**
  * database upgrade callback
  */
-export type LDBUpgradeCallback = (context: LDBUpgradeContext) => void
+export type LDBUpgradeCallback = (context: IDBUpgradeContext) => void
 
 /**
  * upgrade database to the specified version
+ * 
  * only works with specified version lower than current database version
+ * 
  * @param name database name
  * @param version database version
  * @param upgrade upgrade callback

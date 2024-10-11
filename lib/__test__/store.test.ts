@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto"
 import { getDatabaseVersion } from "../database"
-import { upgradeDatabase, type LDBStoreOption } from "../upgrade"
+import { upgradeDatabase, type IDBStoreOption } from "../upgrade"
 import { getStores, existsStore, getStoreItem, setStoreItem, deleteStoreItem } from "../store"
 
 type TestStoreType = {
@@ -11,7 +11,7 @@ type TestStoreType = {
 
 const last = 10
 const databaseName = "local-indexed"
-const storeOption: LDBStoreOption = {
+const storeOption: IDBStoreOption = {
     keyPath: "id",
     autoIncrement: false,
     index: {
