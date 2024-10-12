@@ -1,78 +1,47 @@
-import { getDatabase, type IDBDatabaseCloser } from "./database"
-
 /**
- * get database store names
+ * get transaction from database with specified stores
  * 
- * @param name database name
- * @returns database store names
- */
-export async function getStores(name: string) {
-    const [database, close] = await getDatabase(name)
-    close()
-    return [...database.objectStoreNames]
-}
-
-/**
- * exist of the store in database
- * 
- * @param databaseName database name
- * @param storeName store name
- * @returns whether store exists
- */
-export async function existsStore(databaseName: string, storeName: string) {
-    const stores = await getStores(databaseName)
-    return stores.includes(storeName)
-}
-
-/**
- * get transaction context from database with specified stores
- * 
- * @param databaseName database name
- * @param storeNames store names
+ * @param database database
+ * @param stores store names
  * @param mode transaction mode
- * @returns transaction context
+ * @returns transaction
  */
-async function getTransaction(databaseName: string, storeNames: string | Iterable<string>, mode?: IDBTransactionMode) {
-    const [database, close] = await getDatabase(databaseName)
-    const transaction = database.transaction(storeNames, mode || "readonly")
-    return [transaction, close] as [IDBTransaction, IDBDatabaseCloser]
+export function getTransaction(database: IDBDatabase, stores: string | Iterable<string>, mode?: IDBTransactionMode) {
+    return database.transaction(stores, mode || "readonly")
 }
 
 /**
- * get store context from database
+ * get store from database
  * 
- * @param databaseName database name
- * @param storeName store name
+ * @param database database
+ * @param store store name
  * @param mode transaction mode
- * @returns store context
+ * @returns store
  */
-async function getStore(databaseName: string, storeName: string, mode?: IDBTransactionMode) {
-    const [transaction, close] = await getTransaction(databaseName, storeName, mode || "readonly")
-    const store = transaction.objectStore(storeName)
-    return [store, close] as [IDBObjectStore, IDBDatabaseCloser]
+function getObjectStore(database: IDBDatabase, store: string, mode?: IDBTransactionMode) {
+    const transaction = getTransaction(database, store, mode)
+    return transaction.objectStore(store)
 }
 
 /**
  * put store value
  * 
- * @param databaseName database name
+ * @param database database
  * @param storeName store name
  * @param value store value
  * @returns promise void
  */
-export function setStoreItem(databaseName: string, storeName: string, value: object): Promise<void> {
+export function setStoreItem(database: IDBDatabase, store: string, value: object): Promise<void> {
     return new Promise(async (resolve, reject) => {
-        const [transaction, close] = await getTransaction(databaseName, storeName, "readwrite")
-        const store = transaction.objectStore(storeName)
+        const transaction = getTransaction(database, store, "readwrite")
+        const objectStore = transaction.objectStore(store)
 
-        store.put(value)
+        objectStore.put(value)
 
         transaction.addEventListener("complete", () => {
-            close()
             resolve()
         })
         transaction.addEventListener("error", error => {
-            close()
             reject(error)
         })
     })
@@ -81,21 +50,20 @@ export function setStoreItem(databaseName: string, storeName: string, value: obj
 /**
  * get store value
  * 
- * @param databaseName database name
- * @param storeName store name
+ * @param database database
+ * @param store store name
  * @param keyValue store key value
  * @returns store value
  */
-export function getStoreItem<T extends object>(databaseName: string, storeName: string, keyValue: any): Promise<T | null> {
+export function getStoreItem<T extends object>(database: IDBDatabase, store: string, keyValue: any): Promise<T | null> {
     return new Promise(async (resolve, reject) => {
-        const [store, close] = await getStore(databaseName, storeName)
-        const request = store.get(keyValue)
+        const objectStore = getObjectStore(database, store)
+        const request = objectStore.get(keyValue)
+
         request.addEventListener("success", () => {
-            close()
             resolve(request.result)
         })
         request.addEventListener("error", error => {
-            close()
             reject(error)
         })
     })
@@ -104,22 +72,20 @@ export function getStoreItem<T extends object>(databaseName: string, storeName: 
 /**
  * delete store value
  * 
- * @param databaseName database name
- * @param storeName store name
+ * @param database database
+ * @param store store name
  * @param keyValue store key value
  * @returns promise void
  */
-export function deleteStoreItem(databaseName: string, storeName: string, keyValue: any): Promise<void> {
+export function deleteStoreItem(database: IDBDatabase, store: string, keyValue: any): Promise<void> {
     return new Promise(async (resolve, reject) => {
-        const [store, close] = await getStore(databaseName, storeName, "readwrite")
-        const request = store.delete(keyValue)
+        const objectStore = getObjectStore(database, store, "readwrite")
+        const request = objectStore.delete(keyValue)
 
         request.addEventListener("success", () => {
-            close()
             resolve()
         })
         request.addEventListener("error", error => {
-            close()
             reject(error)
         })
     })

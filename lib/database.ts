@@ -3,9 +3,11 @@ import { getIndexedDB } from "./indexed"
 /**
  * close database
  */
-export interface IDBDatabaseCloser {
-    (): void
-}
+export type IDBDatabaseCloser = () => void
+/**
+ * database context
+ */
+export type IDBDatabaseContext = [IDBDatabase, IDBDatabaseCloser]
 
 /**
  * get the specified database
@@ -14,7 +16,7 @@ export interface IDBDatabaseCloser {
  * @param version database version
  * @returns promise database and close function
  */
-export function getDatabase(name: string, version?: number): Promise<[IDBDatabase, IDBDatabaseCloser]> {
+export function getDatabase(name: string, version?: number): Promise<IDBDatabaseContext> {
     return new Promise((resolve, reject) => {
         const indexed = getIndexedDB()
         const request = indexed.open(name, version)
@@ -36,7 +38,19 @@ export function getDatabase(name: string, version?: number): Promise<[IDBDatabas
  * @returns promise version
  */
 export async function getDatabaseVersion(name: string) {
-    const [db, close] = await getDatabase(name)
-    close() // close database
-    return db.version
+    const [database, close] = await getDatabase(name)
+    close()
+    return database.version
+}
+
+/**
+ * get database store names
+ * 
+ * @param name database name
+ * @returns store names
+ */
+export async function getDatabaseStoreNames(name: string) {
+    const [database, close] = await getDatabase(name)
+    close()
+    return [...database.objectStoreNames]
 }
