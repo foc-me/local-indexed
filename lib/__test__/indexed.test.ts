@@ -1,6 +1,6 @@
 import { indexedDB } from "fake-indexeddb"
 import { useIndexedDB, getDatabases, existsDatabase, deleteDatabase } from "../indexed"
-import { getDatabaseVersion } from "../database"
+import { getVersion } from "../database"
 
 useIndexedDB(indexedDB)
 
@@ -10,7 +10,7 @@ describe("fake-indexed", () => {
         expect(await existsDatabase("local-indexed")).toBe(false)
     })
     it("create a test database", async () => {
-        expect(await getDatabaseVersion("local-indexed")).toBe(1)
+        expect(await getVersion("local-indexed")).toBe(1)
         const databases = await getDatabases()
         expect(databases.length).toBe(1)
         expect(databases[0].name).toBe("local-indexed")

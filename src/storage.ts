@@ -1,4 +1,3 @@
-import { getDatabase } from "lib/database"
 import { setStoreItem, getStoreItem, deleteStoreItem } from "lib/store"
 
 export interface LDBStorage {
@@ -7,23 +6,16 @@ export interface LDBStorage {
     removeItem: (keyValue: any) => Promise<void>
 }
 
-async function setItem(name: string, store: string, value: object) {
-    const [database, close] = await getDatabase(name)
+async function setItem(database: string, store: string, value: object) {
     await setStoreItem(database, store, value)
-    close()
 }
 
-async function getItem<T extends object>(name: string, store: string, keyValue: any) {
-    const [database, close] = await getDatabase(name)
-    const result = await getStoreItem<T>(database, store, keyValue)
-    close()
-    return result
+async function getItem<T extends object>(database: string, store: string, keyValue: any) {
+    return await getStoreItem<T>(database, store, keyValue)
 }
 
-async function removeItem(name: string, store: string, keyValue: any) {
-    const [database, close] = await getDatabase(name)
+async function removeItem(database: string, store: string, keyValue: any) {
     await deleteStoreItem(database, store, keyValue)
-    close()
 }
 
 export function storage(name: string, store: string) {

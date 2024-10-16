@@ -37,7 +37,7 @@ export function getDatabase(name: string): Promise<IDBDatabaseContext> {
  * @param name database name
  * @returns promise version
  */
-export async function getDatabaseVersion(name: string) {
+export async function getVersion(name: string) {
     const [database, close] = await getDatabase(name)
     close()
     return database.version
@@ -49,8 +49,36 @@ export async function getDatabaseVersion(name: string) {
  * @param name database name
  * @returns store names
  */
-export async function getDatabaseStoreNames(name: string) {
+export async function getStoreNames(name: string) {
     const [database, close] = await getDatabase(name)
     close()
     return [...database.objectStoreNames]
+}
+
+/**
+ * get transaction from database with specified stores
+ * 
+ * @param database database name
+ * @param stores store names
+ * @param mode transaction mode
+ * @returns transaction
+ */
+export async function getTransaction(database: string, stores: string | Iterable<string>, mode?: IDBTransactionMode) {
+    const [db, close] = await getDatabase(database)
+    const transaction = db.transaction(stores, mode || "readonly")
+    return [transaction, close] as [IDBTransaction, IDBDatabaseCloser]
+}
+
+/**
+ * get store from database
+ * 
+ * @param database database name
+ * @param store store name
+ * @param mode transaction mode
+ * @returns store
+ */
+export async function getObjectStore(database: string, store: string, mode?: IDBTransactionMode) {
+    const [transaction, close] = await getTransaction(database, store, mode)
+    const objectStore = transaction.objectStore(store)
+    return [objectStore, close] as [IDBObjectStore, IDBDatabaseCloser]
 }

@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto"
 import { getDatabases, existsDatabase, deleteDatabase } from "../indexed"
-import { getDatabaseVersion } from "../database"
+import { getVersion } from "../database"
 import { upgradeDatabase, type IDBStoreOption } from "../upgrade"
 
 const storeOption: IDBStoreOption = {
@@ -20,7 +20,7 @@ describe("upgrade database", () => {
         await upgradeDatabase("local-indexed", 1, (context) => {
             context.createStore("testStore", storeOption)
         })
-        expect(await getDatabaseVersion("local-indexed")).toBe(1)
+        expect(await getVersion("local-indexed")).toBe(1)
         const databases = await getDatabases()
         expect(databases.length).toBe(1)
         expect(databases[0].name).toBe("local-indexed")
@@ -45,7 +45,7 @@ describe("upgrade database 10 times", () => {
             await upgradeDatabase("local-indexed", i, (context) => {
                 context.createStore(`testStore-${i}`, storeOption)
             })
-            expect(await getDatabaseVersion("local-indexed")).toBe(i)
+            expect(await getVersion("local-indexed")).toBe(i)
         }
         const databases = await getDatabases()
         expect(databases.length).toBe(1)
