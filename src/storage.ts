@@ -7,29 +7,29 @@ export interface LDBStorage {
     removeItem: (keyValue: any) => Promise<void>
 }
 
-async function setItem(name: string, version: number, store: string, value: object) {
-    const [database, close] = await getDatabase(name, version)
+async function setItem(name: string, store: string, value: object) {
+    const [database, close] = await getDatabase(name)
     await setStoreItem(database, store, value)
     close()
 }
 
-async function getItem<T extends object>(name: string, version: number, store: string, keyValue: any) {
-    const [database, close] = await getDatabase(name, version)
+async function getItem<T extends object>(name: string, store: string, keyValue: any) {
+    const [database, close] = await getDatabase(name)
     const result = await getStoreItem<T>(database, store, keyValue)
     close()
     return result
 }
 
-async function removeItem(name: string, version: number, store: string, keyValue: any) {
-    const [database, close] = await getDatabase(name, version)
+async function removeItem(name: string, store: string, keyValue: any) {
+    const [database, close] = await getDatabase(name)
     await deleteStoreItem(database, store, keyValue)
     close()
 }
 
-export function storage(name: string, version: number, store: string) {
+export function storage(name: string, store: string) {
     return {
-        setItem: (value: any) => setItem(name, version, store, value),
-        getItem: <T extends object>(keyValue: any) => getItem<T>(name, version, store, keyValue),
-        removeItem: (keyValue: any) => removeItem(name, version, store, keyValue)
+        setItem: (value: any) => setItem(name, store, value),
+        getItem: <T extends object>(keyValue: any) => getItem<T>(name, store, keyValue),
+        removeItem: (keyValue: any) => removeItem(name, store, keyValue)
     } as LDBStorage
 }

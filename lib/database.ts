@@ -16,10 +16,10 @@ export type IDBDatabaseContext = [IDBDatabase, IDBDatabaseCloser]
  * @param version database version
  * @returns promise database and close function
  */
-export function getDatabase(name: string, version?: number): Promise<IDBDatabaseContext> {
+export function getDatabase(name: string): Promise<IDBDatabaseContext> {
     return new Promise((resolve, reject) => {
         const indexed = getIndexedDB()
-        const request = indexed.open(name, version)
+        const request = indexed.open(name)
         request.addEventListener("success", () => {
             const { result } = request
             // always close database after any action

@@ -7,29 +7,27 @@ interface LDBIndexed {
     version: () => Promise<number>
     stores: () => Promise<string[]>
     exists: (store: string) => Promise<boolean>
-    checkout: (version: number) => LDBIndexed
     storage: (name: string) => LDBStorage
 }
 
-async function stores(name: string, version: number) {
-    const [database, close] = await getDatabase(name, version)
+async function stores(name: string) {
+    const [database, close] = await getDatabase(name)
     close()
     return [...database.objectStoreNames]
 }
 
-async function exists(name: string, version: number, store: string) {
-    const storeNames = await stores(name, version)
+async function exists(name: string, store: string) {
+    const storeNames = await stores(name)
     return !!storeNames.includes(store)
 }
 
-function localIndexed(database: string, version: number) {
+function localIndexed(database: string) {
     return {
         name: database,
         version: () => getDatabaseVersion(database),
-        stores: () => stores(database, version),
-        exists: (store: string) => exists(database, version, store),
-        checkout: (version: number) => localIndexed(database, version),
-        storage: (store: string) => storage(database, version, store)
+        stores: () => stores(database),
+        exists: (store: string) => exists(database, store),
+        storage: (store: string) => storage(database, store)
     } as LDBIndexed
 }
 

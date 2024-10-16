@@ -1,9 +1,9 @@
 import "fake-indexeddb/auto"
 import { getDatabases, existsDatabase, deleteDatabase } from "../indexed"
 import { getDatabaseVersion } from "../database"
-import { upgradeDatabase, type LDBStoreOption } from "../upgrade"
+import { upgradeDatabase, type IDBStoreOption } from "../upgrade"
 
-const storeOption: LDBStoreOption = {
+const storeOption: IDBStoreOption = {
     keyPath: "id",
     autoIncrement: true,
     index: {
