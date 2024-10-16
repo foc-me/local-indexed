@@ -1,7 +1,7 @@
 import "fake-indexeddb/auto"
 import { getStoreNames, getVersion } from "../database"
 import { upgradeDatabase, type IDBStoreOption } from "../upgrade"
-import { getStoreItem, setStoreItem, deleteStoreItem, countStoreItems } from "../store"
+import { getStoreItem, setStoreItem, countStoreItems, clearStore } from "../store"
 
 type TestStoreType = {
     id: number
@@ -14,7 +14,7 @@ const databaseName = "local-indexed"
 const storeName = "object-store-10"
 const storeOption: IDBStoreOption = {
     keyPath: "id",
-    autoIncrement: false
+    autoIncrement: true
 }
 
 describe("database store", () => {
@@ -36,12 +36,12 @@ describe("database store", () => {
         }
     })
     it("set store item", async () => {
-        const storeValue = { id: 1, name: "Mike Joe", age: 21 }
+        const storeValue = { name: "Mike Joe", age: 21 }
         await setStoreItem(databaseName, storeName, storeValue)
 
         const returnValue = await getStoreItem<TestStoreType>(databaseName, storeName, 1)
         if (returnValue) {
-            expect(returnValue.id).toBe(storeValue.id)
+            expect(returnValue.id).toBe(1)
             expect(returnValue.name).toBe(storeValue.name)
             expect(returnValue.age).toBe(storeValue.age)
         } else throw new Error("value should not be null")
@@ -69,8 +69,7 @@ describe("database store", () => {
         expect(await countStoreItems(databaseName, storeName)).toBe(2)
     })
     it("delete store item", async () => {
-        await deleteStoreItem(databaseName, storeName, 1)
-        await deleteStoreItem(databaseName, storeName, 3)
+        await clearStore(databaseName, storeName)
         const result1 = await getStoreItem<TestStoreType>(databaseName, storeName, 1)
         const result3 = await getStoreItem<TestStoreType>(databaseName, storeName, 3)
         expect(result1).toBe(undefined)

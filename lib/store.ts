@@ -73,3 +73,50 @@ export function deleteStoreItem(database: string, store: string, keyValue: any):
         })
     })
 }
+
+/**
+ * count values from the store
+ * 
+ * @param database database name
+ * @param store store name
+ * @returns promise number
+ */
+export function countStoreItems(database: string, store: string): Promise<number> {
+    return new Promise(async (resolve, reject) => {
+        const [objectStore, close] = await getObjectStore(database, store)
+        const request = objectStore.count()
+
+        request.addEventListener("success", () => {
+            close()
+            resolve(request.result)
+        })
+        request.addEventListener("error", error => {
+            close()
+            reject(error)
+        })
+    })
+}
+
+
+/**
+ * clear the store
+ * 
+ * @param database database name
+ * @param store store name
+ * @returns promise void
+ */
+export function clearStore(database: string, store: string): Promise<void> {
+    return new Promise(async (resolve, reject) => {
+        const [objectStore, close] = await getObjectStore(database, store, "readwrite")
+        const request = objectStore.clear()
+
+        request.addEventListener("success", () => {
+            close()
+            resolve()
+        })
+        request.addEventListener("error", error => {
+            close()
+            reject(error)
+        })
+    })
+}
