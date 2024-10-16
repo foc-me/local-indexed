@@ -1,13 +1,16 @@
-interface LDBUpgradeStore {
-    createIndex: () => void
-    
-}
+import { upgradeDatabase } from "lib/upgrade"
 
-interface LDBUpgradeContext {
-    createStore: (name: string, store: any) => LDBUpgradeStore
-    deleteStore: (name: string) => void
-}
+// export interface LDBUpgradeStore {
+//     createIndex: () => void
+// }
 
-export function upgrade(database: string, callback: (context: LDBUpgradeContext) => void) {
+// export interface LDBUpgradeContext {
+//     createStore: (name: string, store: any) => LDBUpgradeStore
+//     deleteStore: (name: string) => void
+// }
 
+export function upgrade(database: string, version: number) {
+    return new Promise((resolve, reject) => {
+        
+    })
 }

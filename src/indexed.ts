@@ -1,10 +1,12 @@
 import { getDatabases, existsDatabase, deleteDatabase } from "lib/indexed"
 import { getDatabase, getVersion } from "lib/database"
 import { storage, type LDBStorage } from "./storage"
+import { upgrade } from "./upgrade"
 
 interface LDBIndexed {
     name: string,
     version: () => Promise<number>
+    upgrade: (version: number, callback: () => void) => void
     stores: () => Promise<string[]>
     exists: (store: string) => Promise<boolean>
     storage: (name: string) => LDBStorage
@@ -25,6 +27,7 @@ function localIndexed(database: string) {
     return {
         name: database,
         version: () => getVersion(database),
+        upgrade: (version: number) => upgrade(database, version),
         stores: () => stores(database),
         exists: (store: string) => exists(database, store),
         storage: (store: string) => storage(database, store)
