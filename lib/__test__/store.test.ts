@@ -37,7 +37,7 @@ describe("database store", () => {
     })
     it("set store item", async () => {
         const storeValue = { id: 1, name: "Mike Joe", age: 21 }
-        await setStoreItem(databaseName, storeName, storeValue)
+        expect(await setStoreItem(databaseName, storeName, storeValue)).toBe(1)
 
         const returnValue = await getStoreItem<TestStoreType>(databaseName, storeName, 1)
         if (returnValue) {
@@ -49,7 +49,7 @@ describe("database store", () => {
     })
     it("update store item", async () => {
         const storeValue = { id: 1, name: "Jessica Joe", age: 22 }
-        await setStoreItem(databaseName, storeName, storeValue)
+        expect(await setStoreItem(databaseName, storeName, storeValue)).toBe(1)
         const result1 = await getStoreItem<TestStoreType>(databaseName, storeName, 1)
         if (result1) {
             expect(result1.id).toBe(1)
@@ -59,7 +59,7 @@ describe("database store", () => {
         expect(await countStoreItems(databaseName, storeName)).toBe(1)
 
         Object.assign(storeValue, { id: 3 })
-        await setStoreItem(databaseName, storeName, storeValue)
+        expect(await setStoreItem(databaseName, storeName, storeValue)).toBe(3)
         const result3 = await getStoreItem<TestStoreType>(databaseName, storeName, 3)
         if (result3) {
             expect(result3.id).toBe(3)

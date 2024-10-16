@@ -43,8 +43,8 @@ export interface LDBStorage {
     clear: () => Promise<void>
 }
 
-async function setItem(database: string, store: string, value: object) {
-    await setStoreItem(database, store, value)
+async function setItem<T>(database: string, store: string, value: object) {
+    return await setStoreItem<T>(database, store, value)
 }
 
 async function getItem<T extends object>(database: string, store: string, keyValue: any) {

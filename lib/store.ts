@@ -1,4 +1,4 @@
-import { getTransaction, getObjectStore } from "./database"
+import { getObjectStore } from "./database"
 
 /**
  * put store value
@@ -6,20 +6,18 @@ import { getTransaction, getObjectStore } from "./database"
  * @param database database name
  * @param storeName store name
  * @param value store value
- * @returns promise void
+ * @returns promise unkown
  */
-export function setStoreItem(database: string, store: string, value: object): Promise<void> {
+export function setStoreItem<T>(database: string, store: string, value: object): Promise<T> {
     return new Promise(async (resolve, reject) => {
-        const [transaction, close] = await getTransaction(database, store, "readwrite")
-        const objectStore = transaction.objectStore(store)
+        const [objectStore, close] = await getObjectStore(database, store, "readwrite")
+        const request = objectStore.put(value)
 
-        objectStore.put(value)
-
-        transaction.addEventListener("complete", () => {
+        request.addEventListener("success", () => {
             close()
-            resolve()
+            resolve(request.result as T)
         })
-        transaction.addEventListener("error", error => {
+        request.addEventListener("error", error => {
             close()
             reject(error)
         })

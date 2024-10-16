@@ -70,7 +70,7 @@ export async function getTransaction(database: string, stores: string | Iterable
 }
 
 /**
- * get store from database
+ * get object store from database
  * 
  * @param database database name
  * @param store store name
