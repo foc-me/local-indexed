@@ -1,48 +1,58 @@
-import { getDatabase } from "./database"
-import { transactionAction } from "./transaction"
+import { getTransaction, transactionAction } from "./transaction"
 
 /**
- * get database store names
+ * get database store index names
  * 
- * @param name database name
+ * @param database database name
+ * @param store store name
  * @param indexedDB indexedDB factory engine
- * @returns store names
+ * @returns promise index names
  */
-export async function getStoreNames(database: string, indexedDB?: IDBFactory) {
-    const db = await getDatabase(database, indexedDB)
-    db.close()
-    return [...db.objectStoreNames]
+export async function getStoreIndexNames(
+    database: string,
+    store: string,
+    indexedDB?: IDBFactory
+) {
+    const transaction = await getTransaction(database, store, "readonly", indexedDB)
+    const objectStore = transaction.objectStore(store)
+    transaction.db.close()
+    return [...objectStore.indexNames]
 }
 
 /**
- * take object store actions
+ * take object store index actions
  * 
- * actions come from IBDObjectStore
+ * actions come from IDBIndex
  * 
  * the return value depends on actions
  * 
  * @param database database name
  * @param store store name
+ * @param index index name
  * @param mode transaction mode
  * @param callback action callback
  * @param indexedDB indexedDB factory engine
  * @returns promise unknown
  */
-export async function storeAction<T>(
+export async function indexAction<T>(
     database: string,
     store: string,
+    index: string,
     mode: IDBTransactionMode,
-    callback: (store: IDBObjectStore) => IDBRequest,
+    callback: (storeIndex: IDBIndex) => IDBRequest,
     indexedDB?: IDBFactory
 ): Promise<T> {
     return await transactionAction<T>(database, store, mode, (transaction) => {
-        return callback(transaction.objectStore(store))
+        const objectStore = transaction.objectStore(store)
+        const storeIndex = objectStore.index(index)
+        return callback(storeIndex)
     }, indexedDB)
     // return new Promise(async (resolve, reject) => {
     //     try {
     //         const transaction = await getTransaction(database, store, mode, indexedDB)
     //         const objectStore = transaction.objectStore(store)
-    //         const request = callback(objectStore)
+    //         const storeIndex = objectStore.index(index)
+    //         const request = callback(storeIndex)
     //         request.addEventListener("success", () => {
     //             transaction.db.close()
     //             resolve(request.result as T)

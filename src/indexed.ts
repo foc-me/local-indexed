@@ -12,10 +12,10 @@ interface LDBIndexed {
     storage: (name: string) => LDBStorage
 }
 
-async function stores(name: string) {
-    const [database, close] = await getDatabase(name)
-    close()
-    return [...database.objectStoreNames]
+async function stores(database: string) {
+    const db = await getDatabase(database)
+    db.close()
+    return [...db.objectStoreNames]
 }
 
 async function exists(name: string, store: string) {
@@ -27,7 +27,7 @@ function localIndexed(database: string) {
     return {
         name: database,
         version: () => getVersion(database),
-        upgrade: (version: number) => upgrade(database, version),
+        upgrade: (version: number, callback: Function) => upgrade(database, version, callback),
         stores: () => stores(database),
         exists: (store: string) => exists(database, store),
         storage: (store: string) => storage(database, store)
@@ -36,7 +36,7 @@ function localIndexed(database: string) {
 
 localIndexed.databases = getDatabases
 localIndexed.deleteDatabase = deleteDatabase
-localIndexed.exsits = existsDatabase
+localIndexed.exists = existsDatabase
 localIndexed.version = getVersion
 
 export default localIndexed
