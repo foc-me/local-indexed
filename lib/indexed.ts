@@ -6,7 +6,7 @@ const globalIndexedDB: { current?: IDBFactory } = { current: undefined }
 /**
  * specify indexedDB engine instead of use globalThis.indexedDB
  * 
- * @param indexedDB target indexedDB engine
+ * @param indexedDB indexedDB factory engine
  */
 export function useIndexedDB(indexedDB: IDBFactory) {
     globalIndexedDB.current = indexedDB
@@ -15,9 +15,13 @@ export function useIndexedDB(indexedDB: IDBFactory) {
 /**
  * get global indexedDB engine
  * 
- * @returns indexeddb
+ * return param indexedDB if exists
+ * 
+ * @param indexedDB indexedDB factory engine
+ * @returns indexedDB factory engine
  */
-export function getIndexedDB() {
+export function getIndexedDB(indexedDB?: IDBFactory) {
+    if (indexedDB) return indexedDB
     if (globalIndexedDB.current) return globalIndexedDB.current
     if (!globalThis || !globalThis.indexedDB) {
         throw new ReferenceError("indexedDB is not defined")
@@ -28,42 +32,49 @@ export function getIndexedDB() {
 /**
  * get database infos
  * 
+ * @param indexedDB indexedDB factory engine
  * @returns promise databases info
  */
-export function getDatabases() {
-    const indexed = getIndexedDB()
+export function getDatabases(indexedDB?: IDBFactory) {
+    const indexed = getIndexedDB(indexedDB)
     return indexed.databases()
 }
 
 /**
  * exist of the specified database
  * 
- * @param name database name
+ * @param database database name
+ * @param indexedDB indexedDB factory engine
  * @returns Promise<boolean>
  */
-export async function existsDatabase(name: string) {
-    const databases = await getDatabases()
-    return !!databases.find(item => item.name === name)
+export async function existsDatabase(database: string, indexedDB?: IDBFactory) {
+    const databases = await getDatabases(indexedDB)
+    return !!databases.find(item => item.name === database)
 }
 
 /**
  * delete specified database
  * 
  * @param name database name
+ * @param indexedDB indexedDB factory engine
  * @returns Promise<boolean>
  */
-export function deleteDatabase(name: string): Promise<boolean> {
+export function deleteDatabase(database: string, indexedDB?: IDBFactory): Promise<boolean> {
     return new Promise((resolve, reject) => {
-        const indexed = getIndexedDB()
-        const request = indexed.deleteDatabase(name)
-        request.addEventListener("success", () => {
-            resolve(true)
-        })
-        request.addEventListener("error", error => {
+        try {
+            const indexed = getIndexedDB(indexedDB)
+            const request = indexed.deleteDatabase(database)
+            request.addEventListener("success", () => {
+                resolve(true)
+            })
+            request.addEventListener("error", error => {
+                reject(error)
+            })
+            request.addEventListener("abort", () => {
+                reject(new Error("database is using"))
+            })
+        } catch (error) {
             reject(error)
-        })
-        request.addEventListener("abort", () => {
-            reject(new Error("database is using"))
-        })
+        }
     })
 }

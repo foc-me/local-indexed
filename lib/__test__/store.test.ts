@@ -1,80 +1,67 @@
 import "fake-indexeddb/auto"
-import { getStoreNames, getVersion } from "../database"
-import { upgradeDatabase, type IDBStoreOption } from "../upgrade"
-import { getStoreItem, setStoreItem, deleteStoreItem, countStoreItems } from "../store"
+import { IDBTransaction } from "fake-indexeddb"
+import { deleteDatabase, getDatabases } from "../indexed"
+import { storeAction } from "../store"
+import { upgradeDatabase } from "../upgrade"
+import { getVersion } from "../database"
 
-type TestStoreType = {
-    id: number
-    name: string
-    age: number
-}
-
-const last = 10
 const databaseName = "local-indexed"
-const storeName = "object-store-10"
-const storeOption: IDBStoreOption = {
-    keyPath: "id",
-    autoIncrement: false
-}
+const autoStoreName = "test-auto-store"
+const storeName = "test-store"
+const last = 100
 
-describe("database store", () => {
-    it("create a database", async () => {
-        for (let i = 1; i <= last; i++) {
-            await upgradeDatabase(databaseName, i, (context) => {
-                context.createStore(`object-store-${i}`, storeOption)
+type AutoStore = { id?:number, value: number, odd: boolean, re10: number }
+type Store = Required<AutoStore>
+
+describe("object store action", () => {
+    it("create database and store", async () => {
+        await upgradeDatabase(databaseName, 1, (database) => {
+            [autoStoreName, storeName].forEach(store => {
+                const autoIncrement = store === autoStoreName
+                const objectStore = database.createObjectStore(store, { keyPath: "id", autoIncrement })
+                objectStore.createIndex("odd", "odd", { unique: false })
+                objectStore.createIndex("re10", "re10", { unique: false })
+                for (let i = 1; i <= last; i++) {
+                    const value = { value: i, odd: i % 2 === 0, re10: i % 10 }
+                    if (!autoIncrement) Object.assign(value, { id: i })
+                    objectStore.add(value)
+                }
             })
-            expect(await getVersion(databaseName)).toBe(i)
-        }
+        })
+        expect(await getVersion(databaseName)).toBe(1)
     })
-    it("check stores", async () => {
-        expect(await getVersion(databaseName)).toBe(last)
-        const stores = await getStoreNames(databaseName)
-        expect(stores.length).toBe(10)
-        for (let i = 1; i <= last; i++) {
-            const name = `object-store-${i}`
-            expect(stores.includes(name))
-        }
+    it("check attrs", async () => {
+        expect(await storeAction(databaseName, autoStoreName, "readonly", (objectStore) => {
+            expect(objectStore.autoIncrement).toBe(true)
+            expect(objectStore.keyPath).toBe("id")
+            expect(objectStore.name).toBe(autoStoreName)
+            expect([...objectStore.indexNames]).toEqual(["odd", "re10"])
+            expect(objectStore.transaction instanceof IDBTransaction).toBe(true)
+            expect(objectStore.transaction.mode).toBe("readonly")
+            expect(objectStore.transaction.objectStoreNames).toEqual([autoStoreName])
+            return objectStore.count()
+        })).toBe(last)
+        expect(await storeAction(databaseName, storeName, "readonly", (objectStore) => {
+            expect(objectStore.autoIncrement).toBe(false)
+            expect(objectStore.keyPath).toBe("id")
+            expect(objectStore.name).toBe(storeName)
+            expect([...objectStore.indexNames]).toEqual(["odd", "re10"])
+            expect(objectStore.transaction instanceof IDBTransaction).toBe(true)
+            expect(objectStore.transaction.mode).toBe("readonly")
+            expect(objectStore.transaction.objectStoreNames).toEqual([storeName])
+            return objectStore.count()
+        })).toBe(last)
     })
-    it("set store item", async () => {
-        const storeValue = { id: 1, name: "Mike Joe", age: 21 }
-        expect(await setStoreItem(databaseName, storeName, storeValue)).toBe(1)
-
-        const returnValue = await getStoreItem<TestStoreType>(databaseName, storeName, 1)
-        if (returnValue) {
-            expect(returnValue.id).toBe(storeValue.id)
-            expect(returnValue.name).toBe(storeValue.name)
-            expect(returnValue.age).toBe(storeValue.age)
-        } else throw new Error("value should not be null")
-        expect(await countStoreItems(databaseName, storeName)).toBe(1)
+    it("check count", async () => {
+        const count = (objectStore: IDBObjectStore) => objectStore.count()
+        expect(await storeAction(databaseName, autoStoreName, "readonly", count)).toBe(last)
+        expect(await storeAction(databaseName, storeName, "readonly", count)).toBe(last)
     })
-    it("update store item", async () => {
-        const storeValue = { id: 1, name: "Jessica Joe", age: 22 }
-        expect(await setStoreItem(databaseName, storeName, storeValue)).toBe(1)
-        const result1 = await getStoreItem<TestStoreType>(databaseName, storeName, 1)
-        if (result1) {
-            expect(result1.id).toBe(1)
-            expect(result1.name).toBe("Jessica Joe")
-            expect(result1.age).toBe(22)
-        } else throw new Error("value should not be null")
-        expect(await countStoreItems(databaseName, storeName)).toBe(1)
-
-        Object.assign(storeValue, { id: 3 })
-        expect(await setStoreItem(databaseName, storeName, storeValue)).toBe(3)
-        const result3 = await getStoreItem<TestStoreType>(databaseName, storeName, 3)
-        if (result3) {
-            expect(result3.id).toBe(3)
-            expect(result3.name).toBe("Jessica Joe")
-            expect(result3.age).toBe(22)
-        } else throw new Error("value should not be null")
-        expect(await countStoreItems(databaseName, storeName)).toBe(2)
-    })
-    it("delete store item", async () => {
-        await deleteStoreItem(databaseName, storeName, 1)
-        await deleteStoreItem(databaseName, storeName, 3)
-        const result1 = await getStoreItem<TestStoreType>(databaseName, storeName, 1)
-        const result3 = await getStoreItem<TestStoreType>(databaseName, storeName, 3)
-        expect(result1).toBe(undefined)
-        expect(result3).toBe(undefined)
-        expect(await countStoreItems(databaseName, storeName)).toBe(0)
+    it("check get all", async () => {
+        const getAll = (objectStore: IDBObjectStore) => objectStore.getAll()
+        const autoStore = await storeAction<AutoStore[]>(databaseName, autoStoreName, "readonly", getAll)
+        const store = await storeAction<Store[]>(databaseName, storeName, "readonly", getAll)
+        expect(autoStore.length).toBe(last)
+        expect(store.length).toBe(last)
     })
 })

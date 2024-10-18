@@ -1,16 +1,18 @@
 import { upgradeDatabase } from "lib/upgrade"
 
-// export interface LDBUpgradeStore {
-//     createIndex: () => void
-// }
+export interface LDBUpgradeObjectStore {
+    createIndex: () => void
+    deleteIndex: () => void
+    put: () => void
+}
 
-// export interface LDBUpgradeContext {
-//     createStore: (name: string, store: any) => LDBUpgradeStore
-//     deleteStore: (name: string) => void
-// }
+export interface LDBUpgradeStore {
+    createStore: (name: string, store: any) => LDBUpgradeObjectStore
+    deleteStore: (name: string) => void
+}
 
-export function upgrade(database: string, version: number) {
-    return new Promise((resolve, reject) => {
-        
+export async function upgrade(database: string, version: number, callback: Function) {
+    await upgradeDatabase(database, version, (context) => {
+
     })
 }
