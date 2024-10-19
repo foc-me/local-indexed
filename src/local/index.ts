@@ -1,5 +1,5 @@
-import { getDatabases, existsDatabase, deleteDatabase } from "lib/indexed"
-import { getDatabase, getVersion } from "lib/database"
+import { getDatabases, existsDatabase, deleteDatabase, useIndexedDB } from "../lib/indexed"
+import { getDatabase, getVersion } from "../lib/database"
 import { storage, type LDBStorage } from "./storage"
 import { upgrade } from "./upgrade"
 
@@ -38,5 +38,6 @@ localIndexed.databases = getDatabases
 localIndexed.deleteDatabase = deleteDatabase
 localIndexed.exists = existsDatabase
 localIndexed.version = getVersion
+localIndexed.useIndexedDB = useIndexedDB
 
 export default localIndexed

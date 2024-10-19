@@ -30,7 +30,7 @@ module.exports = {
             ["types", "type"],
             "description",
             "keywords",
-            ["files", ["dist", "esm", "lib", "type", "readme.md", "package.json"]],
+            ["files", ["dist", "esm", "type", "readme.md", "package.json"]],
             "author",
             "repository",
             "license"
