@@ -1,4 +1,4 @@
-import { storeAction } from "lib/store"
+import { storeAction } from "../lib/store"
 
 /**
  * storage for database object store

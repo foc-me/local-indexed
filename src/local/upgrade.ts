@@ -1,4 +1,4 @@
-import { upgradeDatabase } from "lib/upgrade"
+import { upgradeDatabase } from "../lib/upgrade"
 
 export interface LDBUpgradeObjectStore {
     createIndex: () => void

@@ -1,5 +1,2 @@
-export { useIndexedDB } from "lib/indexed"
-
-import localIndexed from "./indexed"
-
+import localIndexed from "./local"
 export default localIndexed
