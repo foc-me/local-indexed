@@ -29,16 +29,3 @@ export function getDatabase(database: string, indexedDB?: IDBFactory): Promise<I
         }
     })
 }
-
-/**
- * get version of the specified database
- * 
- * @param database database name
- * @param indexedDB indexedDB factory engine
- * @returns promise version
- */
-export async function getVersion(database: string, indexedDB?: IDBFactory) {
-    const db = await getDatabase(database, indexedDB)
-    db.close()
-    return db.version
-}

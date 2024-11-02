@@ -38,21 +38,4 @@ export async function storeAction<T>(
     return await transactionAction<T>(database, store, mode, (transaction) => {
         return callback(transaction.objectStore(store))
     }, indexedDB)
-    // return new Promise(async (resolve, reject) => {
-    //     try {
-    //         const transaction = await getTransaction(database, store, mode, indexedDB)
-    //         const objectStore = transaction.objectStore(store)
-    //         const request = callback(objectStore)
-    //         request.addEventListener("success", () => {
-    //             transaction.db.close()
-    //             resolve(request.result as T)
-    //         })
-    //         request.addEventListener("error", error => {
-    //             transaction.db.close()
-    //             reject(error)
-    //         })
-    //     } catch (error) {
-    //         reject(error)
-    //     }
-    // })
 }

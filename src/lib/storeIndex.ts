@@ -47,22 +47,4 @@ export async function indexAction<T>(
         const storeIndex = objectStore.index(index)
         return callback(storeIndex)
     }, indexedDB)
-    // return new Promise(async (resolve, reject) => {
-    //     try {
-    //         const transaction = await getTransaction(database, store, mode, indexedDB)
-    //         const objectStore = transaction.objectStore(store)
-    //         const storeIndex = objectStore.index(index)
-    //         const request = callback(storeIndex)
-    //         request.addEventListener("success", () => {
-    //             transaction.db.close()
-    //             resolve(request.result as T)
-    //         })
-    //         request.addEventListener("error", error => {
-    //             transaction.db.close()
-    //             reject(error)
-    //         })
-    //     } catch (error) {
-    //         reject(error)
-    //     }
-    // })
 }

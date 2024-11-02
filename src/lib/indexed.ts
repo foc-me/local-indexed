@@ -41,18 +41,6 @@ export function getDatabases(indexedDB?: IDBFactory) {
 }
 
 /**
- * exist of the specified database
- * 
- * @param database database name
- * @param indexedDB indexedDB factory engine
- * @returns Promise<boolean>
- */
-export async function existsDatabase(database: string, indexedDB?: IDBFactory) {
-    const databases = await getDatabases(indexedDB)
-    return !!databases.find(item => item.name === database)
-}
-
-/**
  * delete specified database
  * 
  * @param name database name
