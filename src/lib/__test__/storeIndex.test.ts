@@ -1,14 +1,14 @@
 import "fake-indexeddb/auto"
 import { getStoreIndexNames } from "../storeIndex"
 import { upgradeDatabase } from "../upgrade"
-import { getVersion } from "../database"
+import { getVersion } from "./base"
 
 const databaseName = "local-indexed"
 const autoStoreName = "test-auto-store"
 const storeName = "test-store"
 const last = 100
 
-type AutoStore = { id?:number, value: number, odd: boolean, re10: number }
+type AutoStore = { id?: number, value: number, odd: boolean, re10: number }
 type Store = Required<AutoStore>
 
 describe("object store apis", () => {

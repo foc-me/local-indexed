@@ -1,16 +1,15 @@
 import "fake-indexeddb/auto"
 import { IDBTransaction } from "fake-indexeddb"
-import { deleteDatabase, getDatabases } from "../indexed"
 import { storeAction } from "../store"
 import { upgradeDatabase } from "../upgrade"
-import { getVersion } from "../database"
+import { getVersion } from "./base"
 
 const databaseName = "local-indexed"
 const autoStoreName = "test-auto-store"
 const storeName = "test-store"
 const last = 100
 
-type AutoStore = { id?:number, value: number, odd: boolean, re10: number }
+type AutoStore = { id?: number, value: number, odd: boolean, re10: number }
 type Store = Required<AutoStore>
 
 describe("object store action", () => {
@@ -57,11 +56,84 @@ describe("object store action", () => {
         expect(await storeAction(databaseName, autoStoreName, "readonly", count)).toBe(last)
         expect(await storeAction(databaseName, storeName, "readonly", count)).toBe(last)
     })
-    it("check get all", async () => {
+    it("check getAll", async () => {
         const getAll = (objectStore: IDBObjectStore) => objectStore.getAll()
         const autoStore = await storeAction<AutoStore[]>(databaseName, autoStoreName, "readonly", getAll)
         const store = await storeAction<Store[]>(databaseName, storeName, "readonly", getAll)
         expect(autoStore.length).toBe(last)
         expect(store.length).toBe(last)
+        for (let i = 0; i < last; i++) {
+            const value = i + 1
+            expect(autoStore[i].id).toBe(value)
+            expect(autoStore[i].odd).toBe(value % 2 === 0)
+            expect(autoStore[i].re10).toBe(value % 10)
+            expect(store[i].id).toBe(value)
+            expect(store[i].odd).toBe(value % 2 === 0)
+            expect(store[i].re10).toBe(value % 10)
+        }
+    })
+    it("check get", async () => {
+        for (let i = 1; i <= last; i++) {
+            const autoItem = await storeAction<AutoStore>(databaseName, autoStoreName, "readonly", (objectStore) => {
+                return objectStore.get(i)
+            })
+            expect(autoItem.id).toBe(i)
+            expect(autoItem.odd).toBe(i % 2 === 0)
+            expect(autoItem.re10).toBe(i % 10)
+            const item = await storeAction<Store>(databaseName, storeName, "readonly", (objectStore) => {
+                return objectStore.get(i)
+            })
+            expect(item.id).toBe(i)
+            expect(item.odd).toBe(i % 2 === 0)
+            expect(item.re10).toBe(i % 10)
+        }
+        const getItem = (objectStore: IDBObjectStore) => objectStore.get(last + 1)
+        expect(await storeAction(databaseName, autoStoreName, "readonly", getItem)).toBe(undefined)
+        expect(await storeAction(databaseName, storeName, "readonly", getItem)).toBe(undefined)
+    })
+    it("check getKey", async () => {
+        for (let i = 1; i <= last; i++) {
+            expect(await storeAction(databaseName, autoStoreName, "readonly", (objectStore) => {
+                return objectStore.getKey(i)
+            })).toBe(i)
+            expect(await storeAction(databaseName, storeName, "readonly", (objectStore) => {
+                return objectStore.getKey(i)
+            })).toBe(i)
+        }
+        expect(await storeAction(databaseName, autoStoreName, "readonly", (objectStore) => {
+            return objectStore.getKey(IDBKeyRange.bound(1, 100))
+        })).toBe(1)
+        expect(await storeAction(databaseName, storeName, "readonly", (objectStore) => {
+            return objectStore.getKey(IDBKeyRange.bound(1, 100))
+        })).toBe(1)
+    })
+    it("check getAllKeys", async () => {
+        const autoStoreKeys = await storeAction<number[]>(databaseName, autoStoreName, "readonly", (objectStore) => {
+            return objectStore.getAllKeys(IDBKeyRange.bound(1, 100))
+        })
+        expect(Array.isArray(autoStoreKeys)).toBe(true)
+        expect(autoStoreKeys.length).toBe(last)
+        autoStoreKeys.forEach((i, index) => {
+            expect(i === index + 1).toBe(true)
+        })
+        const notAutoStoreKeys = await storeAction<number[]>(databaseName, autoStoreName, "readonly", (objectStore) => {
+            return objectStore.getAllKeys(IDBKeyRange.bound(101, 200))
+        })
+        expect(Array.isArray(notAutoStoreKeys)).toBe(true)
+        expect(notAutoStoreKeys.length).toBe(0)
+
+        const storeKeys = await storeAction<number[]>(databaseName, storeName, "readonly", (objectStore) => {
+            return objectStore.getAllKeys(IDBKeyRange.bound(1, 100))
+        })
+        expect(Array.isArray(storeKeys)).toBe(true)
+        expect(storeKeys.length).toBe(last)
+        storeKeys.forEach((i, index) => {
+            expect(i === index + 1).toBe(true)
+        })
+        const notStoreKeys = await storeAction<number[]>(databaseName, storeName, "readonly", (objectStore) => {
+            return objectStore.getAllKeys(IDBKeyRange.bound(101, 200))
+        })
+        expect(Array.isArray(notStoreKeys)).toBe(true)
+        expect(notStoreKeys.length).toBe(0)
     })
 })

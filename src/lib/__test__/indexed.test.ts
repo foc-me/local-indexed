@@ -1,6 +1,7 @@
 import { indexedDB } from "fake-indexeddb"
-import { useIndexedDB, getDatabases, existsDatabase, deleteDatabase } from "../indexed"
-import { getVersion } from "../database"
+import { useIndexedDB, getDatabases, deleteDatabase } from "../indexed"
+import { getDatabase } from "../database"
+import { existsDatabase, getVersion } from "./base"
 
 useIndexedDB(indexedDB)
 const databaseName = "local-indexed"
@@ -12,14 +13,17 @@ describe("create database", () => {
         expect(await existsDatabase(databaseName)).toBe(false)
     })
     it("create a test database", async () => {
+        const database = await getDatabase(databaseName)
+        database.close()
         expect(await getVersion(databaseName)).toBe(1)
+
         const databases = await getDatabases()
         expect(databases.length).toBe(1)
         expect(databases[0].name).toBe(databaseName)
         expect(databases[0].version).toBe(1)
         expect(await existsDatabase(databaseName)).toBe(true)
     })
-    it("delete the test database", async () => {
+    it("delete test database", async () => {
         await deleteDatabase(databaseName)
         expect((await getDatabases()).length).toBe(0)
         expect(await existsDatabase(databaseName)).toBe(false)
@@ -27,14 +31,17 @@ describe("create database", () => {
 })
 
 describe("create databases", () => {
-    it("no database at the beginning", async () => {
+    it("no databases at the beginning", async () => {
         expect((await getDatabases()).length).toBe(0)
         expect(await existsDatabase(databaseName)).toBe(false)
     })
     it("create test databases", async () => {
         for (let i = 1; i <= last; i++) {
+            const database = await getDatabase(`${databaseName}-${i}`)
+            database.close()
             expect(await getVersion(`${databaseName}-${i}`)).toBe(1)
         }
+
         const databases = await getDatabases()
         expect(databases.length).toBe(last)
         for (let i = 1; i <= last; i++) {
@@ -45,8 +52,7 @@ describe("create databases", () => {
             expect(version).toBe(1)
         }
     })
-    it("delete the test databases", async () => {
-        await deleteDatabase(databaseName)
+    it("delete test databases", async () => {
         const databases = await getDatabases()
         expect(databases.length).toBe(last)
         for (let i = 1; i <= last; i++) {

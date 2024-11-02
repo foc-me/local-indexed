@@ -1,7 +1,6 @@
 import "fake-indexeddb/auto"
-import { countStore, getStoreItem } from "./base"
-import { getVersion } from "../database"
 import { upgradeDatabase } from "../upgrade"
+import { getVersion, countStore, getStoreItem } from "./base"
 
 const databaseName = "local-indexed"
 const storeName = "test-store"
