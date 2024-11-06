@@ -1,5 +1,14 @@
-import { getDatabases } from "../indexed"
+import { getDatabases, deleteDatabase } from "../indexed"
 import { storeAction } from "../store"
+
+export async function deleteDatabases() {
+    const databases = await getDatabases()
+    for (const database of databases) {
+        if (database.name) {
+            await deleteDatabase(database.name)
+        }
+    }
+}
 
 async function getDatabaseInfo(database: string, indexedDB?: IDBFactory) {
     const databases = await getDatabases(indexedDB)
@@ -16,9 +25,9 @@ export async function getVersion(database: string, indexedDB?: IDBFactory) {
 }
 
 export async function countStore(database: string, store: string, indexedDB?: IDBFactory) {
-    return await storeAction<number>(database, store, "readonly", (objectStore) => {
+    return await storeAction<number>(database, store, (objectStore) => {
         return objectStore.count()
-    }, indexedDB)
+    }, "readonly", indexedDB)
 }
 
 export async function getStoreItem<T extends object>(
@@ -27,7 +36,13 @@ export async function getStoreItem<T extends object>(
     keyValue: IDBValidKey,
     indexedDB?: IDBFactory
 ) {
-    return await storeAction<T>(database, store, "readonly", (objectStore) => {
+    return await storeAction<T>(database, store, (objectStore) => {
         return objectStore.get(keyValue)
-    }, indexedDB)
+    }, "readonly", indexedDB)
+}
+
+export async function countStoreItem(database: string, store: string, indexedDB?: IDBFactory) {
+    return await storeAction<number>(database, store, (objectStore) => {
+        return objectStore.count()
+    }, "readonly", indexedDB)
 }

@@ -5,7 +5,6 @@ import { existsDatabase, getVersion } from "./base"
 
 useIndexedDB(indexedDB)
 const databaseName = "local-indexed"
-const last = 10
 
 describe("create database", () => {
     it("no database at the beginning", async () => {
@@ -36,15 +35,15 @@ describe("create databases", () => {
         expect(await existsDatabase(databaseName)).toBe(false)
     })
     it("create test databases", async () => {
-        for (let i = 1; i <= last; i++) {
+        for (let i = 1; i <= 10; i++) {
             const database = await getDatabase(`${databaseName}-${i}`)
             database.close()
             expect(await getVersion(`${databaseName}-${i}`)).toBe(1)
         }
 
         const databases = await getDatabases()
-        expect(databases.length).toBe(last)
-        for (let i = 1; i <= last; i++) {
+        expect(databases.length).toBe(10)
+        for (let i = 1; i <= 10; i++) {
             const { name, version } = databases[i - 1]
             if (!name) throw new Error("name should not be undefined")
             expect(await existsDatabase(name)).toBe(true)
@@ -54,8 +53,8 @@ describe("create databases", () => {
     })
     it("delete test databases", async () => {
         const databases = await getDatabases()
-        expect(databases.length).toBe(last)
-        for (let i = 1; i <= last; i++) {
+        expect(databases.length).toBe(10)
+        for (let i = 1; i <= 10; i++) {
             const { name } = databases[i - 1]
             if (!name) throw new Error("name should not be undefined")
             await deleteDatabase(name)
