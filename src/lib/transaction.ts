@@ -16,7 +16,13 @@ export async function getTransaction(
     indexedDB?: IDBFactory
 ) {
     const db = await getDatabase(database, indexedDB)
-    return db.transaction(stores, mode || "readonly")
+    try {
+        return db.transaction(stores, mode || "readonly")
+    } catch (error) {
+        // should always close the database connection
+        db.close()
+        throw error
+    }
 }
 
 /**
@@ -36,22 +42,28 @@ export async function getTransaction(
 export function transactionAction<T>(
     database: string,
     stores: string | Iterable<string>,
-    mode: IDBTransactionMode,
     callback: (transaction: IDBTransaction) => IDBRequest | void,
+    mode?: IDBTransactionMode,
     indexedDB?: IDBFactory
 ): Promise<T> {
     return new Promise(async (resolve, reject) => {
+        // should always close the database connection
         try {
             const transaction = await getTransaction(database, stores, mode, indexedDB)
-            const request = callback(transaction)
-            transaction.addEventListener("complete", () => {
-                transaction.db.close()
-                resolve((request ? request.result : undefined) as T)
-            })
-            transaction.addEventListener("error", (error) => {
+            try {
+                const request = callback(transaction)
+                transaction.addEventListener("complete", () => {
+                    transaction.db.close()
+                    resolve((request ? request.result : undefined) as T)
+                })
+                transaction.addEventListener("error", (error) => {
+                    transaction.db.close()
+                    reject(error)
+                })
+            } catch (error) {
                 transaction.db.close()
                 reject(error)
-            })
+            }
         } catch (error) {
             reject(error)
         }

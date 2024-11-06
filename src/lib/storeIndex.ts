@@ -38,13 +38,15 @@ export async function indexAction<T>(
     database: string,
     store: string,
     index: string,
-    mode: IDBTransactionMode,
-    callback: (storeIndex: IDBIndex) => IDBRequest,
+    callback: (storeIndex: IDBIndex) => IDBRequest | void,
+    mode?: IDBTransactionMode,
     indexedDB?: IDBFactory
 ): Promise<T> {
-    return await transactionAction<T>(database, store, mode, (transaction) => {
+    return await transactionAction<T>(database, store, (transaction) => {
         const objectStore = transaction.objectStore(store)
+        // if the index does not exist
+        // objectStore.index will threw a NotFoundError
         const storeIndex = objectStore.index(index)
         return callback(storeIndex)
-    }, indexedDB)
+    }, mode, indexedDB)
 }

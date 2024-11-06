@@ -31,11 +31,13 @@ export async function getStoreNames(database: string, indexedDB?: IDBFactory) {
 export async function storeAction<T>(
     database: string,
     store: string,
-    mode: IDBTransactionMode,
-    callback: (store: IDBObjectStore) => IDBRequest,
+    callback: (store: IDBObjectStore) => IDBRequest | void,
+    mode?: IDBTransactionMode,
     indexedDB?: IDBFactory
 ): Promise<T> {
-    return await transactionAction<T>(database, store, mode, (transaction) => {
+    // createIndex and deleteIndex can only work in upgradeneeded callback
+    // these two apis will threw error in normal situation
+    return await transactionAction<T>(database, store, (transaction) => {
         return callback(transaction.objectStore(store))
-    }, indexedDB)
+    }, mode, indexedDB)
 }

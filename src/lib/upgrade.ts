@@ -19,6 +19,9 @@ export function upgradeDatabase(
     indexedDB?: IDBFactory
 ): Promise<void> {
     return new Promise(async (resolve, reject) => {
+        // the upgrade callback is not running in transaction
+        // should be quite clear and considered while in upgrading data or database
+        // it can't rollback after any error throw out
         try {
             const indexed = getIndexedDB(indexedDB)
             const request = indexed.open(database, version)
@@ -32,9 +35,16 @@ export function upgradeDatabase(
             request.addEventListener("upgradeneeded", () => {
                 try {
                     if (typeof upgrade === "function") {
+                        // transactionAction will close the database connection in complete callback
+                        // connection may be closed while the asynchronous function executing
                         if (isAsyncFunction(upgrade)) {
                             console.warn("upgrade callback should not be asynchronous")
                         }
+
+                        // call objectStore apis in upgrade callback
+                        // apis return IDBRequest object
+                        // it means the action could be excuted
+                        // but can't get the IDBRequest.result
                         upgrade(request.result)
                     }
                 } catch (error) {
