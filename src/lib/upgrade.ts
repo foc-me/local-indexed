@@ -1,44 +1,58 @@
-import { isAsyncFunction } from "../util"
-import { getIndexedDB } from "./indexed"
+import { getDatabases, getIndexedDB } from "./indexed"
 
 /**
- * upgrade database to the specified version
- * 
- * only works with specified version lower than current database version
- * 
- * @param name database name
- * @param version database version
- * @param upgrade upgrade callback
- * @param indexedDB indexedDB factory engine
- * @returns Promise<void>
+ * resolve value of upgradeDatabase
  */
-export function upgradeDatabase(
-    database: string,
-    version: number,
-    upgrade: (context: IDBDatabase, event: IDBVersionChangeEvent) => void | Promise<void>,
-    indexedDB?: IDBFactory
-): Promise<void> {
-    return new Promise(async (resolve, reject) => {
-        // the upgrade callback is not running in transaction
-        // should be quite clear and considered while in upgrading data or database
-        // it can't rollback after any error throw out
+export type IDBUpgradeEvent = {
+    /**
+     * upgrade transaction of upgradeneeded callback event
+     */
+    transaction: IDBTransaction
+    /**
+     * current version
+     */
+    oldVersion: number
+    /**
+     * upgrade version
+     */
+    newVersion: number | null
+    /**
+     * the origin event of upgradeneeded callback
+     */
+    origin: IDBVersionChangeEvent
+}
+
+/**
+ * resolve upgrade event from upgradeneeded callback
+ * 
+ * @param database database name
+ * @param version upgrade version
+ * @param indexedDB indexeddb factory
+ * @returns upgrade event
+ */
+export function upgradeDatabase(database: string, version: number, indexedDB?: IDBFactory) {
+    return new Promise<IDBUpgradeEvent>(async (resolve, reject) => {
         try {
+            const current = (await getDatabases(indexedDB)).find(item => item.name === database)
+            if (current && current.version && current.version >= version) {
+                throw new Error(`upgrade version error: version '${current.version}' can not upgrade to version '${version}'`)
+            }
+
             const indexed = getIndexedDB(indexedDB)
             const request = indexed.open(database, version)
-            // request.addEventListener("success", () => {
-            //     request.result.close()
-            //     resolve()
-            // })
             request.addEventListener("error", error => {
                 reject(error)
             })
-            request.addEventListener("upgradeneeded", async (event) => {
+            request.addEventListener("upgradeneeded", event => {
                 try {
-                    if (isAsyncFunction(upgrade)) {
-                        await upgrade(request.result, event)
-                    } else upgrade(request.result, event)
-                    request.result.close()
-                    resolve()
+                    const { target, oldVersion, newVersion } = event
+                    const { transaction } = (target || {}) as IDBOpenDBRequest
+                    if (transaction) {
+                        // just don't use setTimeout or something like it in then function
+                        resolve({ transaction, oldVersion, newVersion, origin: event })
+                    } else {
+                        reject(new Error("version change transaction is not defined"))
+                    }
                 } catch (error) {
                     reject(error)
                 }

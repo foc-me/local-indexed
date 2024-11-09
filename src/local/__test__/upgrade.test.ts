@@ -4,14 +4,14 @@ import localIndexed from "../index"
 const databaseName = "local-indexed"
 const storeName = "test-store"
 
-describe("upgrade", () => {
-    it("no database", async () => {
+describe("check indexed.upgrade", () => {
+    it("check empty database", async () => {
         const indexed = localIndexed(databaseName)
         expect(await indexed.version()).toBe(0)
-        expect((await localIndexed.databases()).length).toEqual(0)
+        expect((await localIndexed.databases()).length).toBe(0)
         expect(await localIndexed.exists(databaseName)).toBe(false)
     })
-    it("check collection create", async () => {
+    it("check create", async () => {
         const indexed = localIndexed(databaseName)
         await indexed.upgrade(1, (context) => {
             const collection = context.collection(storeName)
@@ -21,14 +21,12 @@ describe("upgrade", () => {
         expect(await indexed.version()).toBe(1)
         expect((await indexed.stores()).length).toBe(1)
         expect(await indexed.exists(storeName)).toBe(true)
-    })
-    it("check collection indexes v1", async () => {
-        const indexed = localIndexed(databaseName)
+
         const collection = indexed.collection(storeName)
         const indexes = await collection.getIndexes()
         expect(indexes.length).toBe(0)
     })
-    it("check collection createIndex", async () => {
+    it("check createIndex", async () => {
         const indexed = localIndexed(databaseName)
         await indexed.upgrade(2, (context) => {
             const collection = context.collection(storeName)
@@ -39,9 +37,7 @@ describe("upgrade", () => {
         expect(await indexed.version()).toBe(2)
         expect((await indexed.stores()).length).toBe(1)
         expect(await indexed.exists(storeName)).toBe(true)
-    })
-    it("check collection indexes v2", async () => {
-        const indexed = localIndexed(databaseName)
+
         const collection = indexed.collection(storeName)
         const indexes = await collection.getIndexes()
         expect(indexes.length).toBe(2)
@@ -52,7 +48,7 @@ describe("upgrade", () => {
             expect(index.multiEntry).toBe(false)
         }
     })
-    it("check collection alter", async () => {
+    it("check alter", async () => {
         const indexed = localIndexed(databaseName)
         await indexed.upgrade(3, (context) => {
             const collection = context.collection(storeName)
@@ -69,9 +65,7 @@ describe("upgrade", () => {
         expect(await indexed.version()).toBe(3)
         expect((await indexed.stores()).length).toBe(1)
         expect(await indexed.exists(storeName)).toBe(true)
-    })
-    it("check collection indexes v3", async () => {
-        const indexed = localIndexed(databaseName)
+
         const collection = indexed.collection(storeName)
         const indexes = await collection.getIndexes()
         expect(indexes.length).toBe(2)
@@ -82,7 +76,7 @@ describe("upgrade", () => {
             expect(index.multiEntry).toBe(false)
         }
     })
-    it("check collection deleteIndex", async () => {
+    it("check deleteIndex", async () => {
         const indexed = localIndexed(databaseName)
         await indexed.upgrade(4, async (context) => {
             const collection = context.collection(storeName)
@@ -95,14 +89,23 @@ describe("upgrade", () => {
         expect(await indexed.version()).toBe(4)
         expect((await indexed.stores()).length).toBe(1)
         expect(await indexed.exists(storeName)).toBe(true)
-    })
-    it("check collection indexes v4", async () => {
-        const indexed = localIndexed(databaseName)
+
         const collection = indexed.collection(storeName)
         const indexes = await collection.getIndexes()
         expect(indexes.length).toBe(0)
     })
-    it("delete database", async () => {
+    it("check drop", async () => {
+        const indexed = localIndexed(databaseName)
+        await indexed.upgrade(5, async (context) => {
+            const collection = context.collection(storeName)
+            collection.drop()
+        })
+        expect(await localIndexed.version(databaseName)).toBe(5)
+        expect(await indexed.version()).toBe(5)
+        expect((await indexed.stores()).length).toBe(0)
+        expect(await indexed.exists(storeName)).toBe(false)
+    })
+    it("check delete database", async () => {
         await localIndexed.deleteDatabase(databaseName)
         const indexed = localIndexed(databaseName)
         expect(await indexed.version()).toBe(0)

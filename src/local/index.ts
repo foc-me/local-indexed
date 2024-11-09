@@ -1,17 +1,54 @@
 import { getDatabases, deleteDatabase, useIndexedDB } from "../lib/indexed"
 import { getDatabase } from "../lib/database"
+import { makeContext } from "./context"
 import { storage, type LDBStorage } from "./storage"
 import { upgrade, type LDBUpgradeContext } from "./upgrade"
 import { collection, type LDBCollection } from "./collection"
 
+/**
+ * local indexed database
+ */
 interface LDBIndexed {
+    /**
+     * database name
+     */
     name: string,
+    /**
+     * database version
+     */
     version(): Promise<number>
+    /**
+     * upgrade database
+     * 
+     * @param version upgrade version
+     * @param callback upgrade callback
+     */
     upgrade(version: number, callback: (context: LDBUpgradeContext) => void | Promise<void>): Promise<void>
+    /**
+     * return object stores of current database
+     */
     stores(): Promise<string[]>
+    /**
+     * check store exists or not in database
+     * 
+     * @param store store name
+     */
     exists(store: string): Promise<boolean>
-    storage(name: string): LDBStorage
-    collection: <T>(store: string) => LDBCollection<T>
+    /**
+     * get object store storage
+     * 
+     * just like localStorage
+     * 
+     * @param name store name
+     */
+    storage(store: string): LDBStorage
+    /**
+     * get store colleaction
+     * 
+     * @param store store name
+     * @returns collection
+     */
+    collection: <T extends object>(store: string) => LDBCollection<T>
 }
 
 async function getDatabaseInfo(database: string) {
@@ -35,17 +72,19 @@ async function exists(name: string, store: string) {
     return !!storeNames.includes(store)
 }
 
-function localIndexed(database: string) {
+function localIndexed(database: string, indexedDB?: IDBFactory) {
+    const context = makeContext(database, indexedDB)
+
     return {
         name: database,
         version: () => getVersion(database),
         upgrade: async (version, callback) => {
-            await upgrade(database, version, callback)
+            await upgrade(version, callback, context)
         },
         stores: () => stores(database),
         exists: (store) => exists(database, store),
-        storage: (store) => storage(database, store),
-        collection: (store) => collection(database, store)
+        storage: (store) => storage(store, context),
+        collection: (store) => collection(store, context)
     } as LDBIndexed
 }
 

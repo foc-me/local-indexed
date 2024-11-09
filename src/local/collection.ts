@@ -1,17 +1,28 @@
-import { getTransaction, transactionAction, requestAction } from "../lib/transaction"
+import { transactionAction } from "../lib/transaction"
+import { requestAction, type IDBRequestLike } from "../lib/request"
+import { LDBContext } from "./context"
 
+/**
+ * create index option
+ */
 type LDBIndexOption = {
     keyPath?: string | Iterable<string>
     unique?: boolean
     multiEntry?: boolean
 }
 
+/**
+ * create object store option
+ */
 type LDBCollectionOption = {
     keyPath?: string | string[] | null
     autoIncrement?: boolean
     index?: Record<string, LDBIndexOption>
 }
 
+/**
+ * object store index detials
+ */
 type IDBIndexInfo = {
     name: string
     keyPath: string | string[]
@@ -19,38 +30,131 @@ type IDBIndexInfo = {
     multiEntry: boolean
 }
 
-export interface LDBCollection<T> {
+/**
+ * collection of indexeddb database
+ */
+export interface LDBCollection<T extends object> {
     // upgrade api
+    /**
+     * create current object store
+     * 
+     * throw error if current object store exists
+     * 
+     * only use in upgrade callback
+     * 
+     * @param options create object store options
+     */
     create(options: LDBCollectionOption): boolean
+    /**
+     * delete current object store
+     * 
+     * only use in upgrade callback
+     */
     drop(): boolean
+    /**
+     * create current object store
+     * 
+     * delete current object store if exists
+     * 
+     * only use in upgrade callback
+     * 
+     * @param options create object store options
+     */
     alter(options: LDBCollectionOption): boolean
+    /**
+     * create object store index
+     * 
+     * only use in upgrade callback
+     * 
+     * @param index index name
+     * @param options create store index options
+     */
     createIndex(index: string, options: LDBIndexOption): boolean
+    /**
+     * delete object store index
+     * 
+     * only use in upgrade callback
+     * 
+     * @param index index name
+     */
     dropIndex(index: string): boolean
     // action api
+    /**
+     * add a value to current object store
+     * 
+     * throw error if the key value exists
+     * 
+     * @param value insert value
+     * @returns key value
+     */
+    insertOne: <K extends IDBValidKey>(value: any) => Promise<K>
     // select api
+    /**
+     * get all index infos of current object store
+     */
     getIndexes(): Promise<IDBIndexInfo[]>
+    /**
+     * get all values of current object store
+     */
     values(): Promise<T[]>
 }
 
+/**
+ * check the transaction mode is versionchange
+ * 
+ * some apis only work in versionchange transaction
+ * 
+ * @param transaction transaction
+ * @returns result
+ */
 function checkVersionChange(transaction?: IDBTransaction): transaction is IDBTransaction {
     return !!transaction && transaction.mode === "versionchange"
 }
 
+/**
+ * check store exists or not in the transaction
+ * 
+ * @param transaction transaction
+ * @param store store name
+ * @returns resulr
+ */
 function containsStore(transaction: IDBTransaction, store: string) {
     return transaction.objectStoreNames.contains(store)
 }
 
+/**
+ * check index exists or not in the object store
+ * 
+ * @param objectStore objectStore
+ * @param index index name
+ * @returns result
+ */
 function containsIndex(objectStore: IDBObjectStore, index: string) {
     return objectStore.indexNames.contains(index)
 }
 
+/**
+ * pick up create index options from create object store options
+ * 
+ * @param options create object store options
+ * @returns splited options
+ */
 function splitCollectionOption(options: LDBCollectionOption) {
     const { keyPath, autoIncrement, index } = options
     return [{ keyPath, autoIncrement }, index] as [IDBObjectStoreParameters, Record<string, LDBIndexOption>]
 }
 
+/**
+ * params of objectStore.createIndex
+ */
 type LDBCreateIndexOptions = [string, (string | string[]), IDBIndexParameters?]
 
+/**
+ * turn create index options to the type of objectStore.createIndex params
+ * 
+ * @param options create index options
+ * @returns result
+ */
 function formatIndexOption(options?: Record<string, LDBIndexOption>) {
     return Object.entries(options || {}).map(([key, option]) => {
         const { keyPath, unique, multiEntry } = option
@@ -58,8 +162,16 @@ function formatIndexOption(options?: Record<string, LDBIndexOption>) {
     })
 }
 
-export function collection<T>(database: string, store: string, transaction?: IDBTransaction) {
+/**
+ * create collection
+ * 
+ * @param store store name
+ * @param context indexed context
+ * @returns collection
+ */
+export function collection<T extends object>(store: string, context: LDBContext) {
     const create = (options: LDBCollectionOption) => {
+        const { transaction } = context
         if (checkVersionChange(transaction)) {
             if (containsStore(transaction, store)) {
                 throw new ReferenceError(`objectStore '${store}' already exists`)
@@ -77,6 +189,7 @@ export function collection<T>(database: string, store: string, transaction?: IDB
     }
 
     const drop = () => {
+        const { transaction } = context
         if (checkVersionChange(transaction)) {
             transaction.db.deleteObjectStore(store)
             return !containsStore(transaction, store)
@@ -85,6 +198,7 @@ export function collection<T>(database: string, store: string, transaction?: IDB
     }
 
     const alter = (options: LDBCollectionOption) => {
+        const { transaction } = context
         if (checkVersionChange(transaction)) {
             if (containsStore(transaction, store)) drop()
             return create(options)
@@ -93,6 +207,7 @@ export function collection<T>(database: string, store: string, transaction?: IDB
     }
 
     const createIndex = (index: string, options: LDBIndexOption) => {
+        const { transaction } = context
         if (checkVersionChange(transaction)) {
             if (!containsStore(transaction, store)) {
                 throw new ReferenceError(`objectStore '${store}' does not exist`)
@@ -106,6 +221,7 @@ export function collection<T>(database: string, store: string, transaction?: IDB
     }
 
     const dropIndex = (index: string) => {
+        const { transaction } = context
         if (checkVersionChange(transaction)) {
             if (!containsStore(transaction, store)) {
                 throw new ReferenceError(`objectStore '${store}' does not exist`)
@@ -117,8 +233,41 @@ export function collection<T>(database: string, store: string, transaction?: IDB
         throw new Error("only use this api in upgrade callback")
     }
 
+    /**
+     * get current transaction from context
+     * 
+     * in different situations use different ways to get transaction
+     * 
+     * @param mode transaction mode
+     * @param callback transaction action
+     * @returns request
+     */
+    const takeRequestAction = async <T>(
+        mode: IDBTransactionMode,
+        callback: (transaction: IDBTransaction) => IDBRequest | IDBRequestLike
+    ) => {
+        const { transaction, getTransaction } = context
+        if (transaction) {
+            return await requestAction<T>(() => {
+                return callback(transaction)
+            })
+        } else {
+            const transaction = await getTransaction(store, mode)
+            return await transactionAction<T>(transaction, () => {
+                return callback(transaction)
+            })
+        }
+    }
+
+    const insertOne = async <K extends IDBValidKey>(value: any) => {
+        return await takeRequestAction<K>("readwrite", (transaction: IDBTransaction) => {
+            const objectStore = transaction.objectStore(store)
+            return objectStore.add(value)
+        })
+    }
+
     const getIndexes = async () => {
-        const makeIndexes = (transaction: IDBTransaction) => {
+        return await takeRequestAction<IDBIndexInfo[]>("readonly", (transaction: IDBTransaction) => {
             const objectStore = transaction.objectStore(store)
             const indexNames = [...objectStore.indexNames]
             const result: IDBIndexInfo[] = []
@@ -126,33 +275,15 @@ export function collection<T>(database: string, store: string, transaction?: IDB
                 const { name, keyPath, unique, multiEntry } = objectStore.index(indexNames[i])
                 result.push({ name, keyPath, unique, multiEntry })
             }
-            return result
-        }
-        if (transaction) return makeIndexes(transaction)
-        else {
-            const transaction = await getTransaction(database, store, "readonly")
-            return await transactionAction<IDBIndexInfo[]>(transaction, () => {
-                const result = makeIndexes(transaction)
-                return { result } as IDBRequest
-            })
-        }
+            return { result }
+        })
     }
 
     const values = async () => {
-        const makeValus = (transaction: IDBTransaction) => {
+        return await takeRequestAction<T[]>("readwrite", (transaction: IDBTransaction) => {
             const objectStore = transaction.objectStore(store)
             return objectStore.getAll()
-        }
-        if (transaction) {
-            return await requestAction<T[]>(() => {
-                return makeValus(transaction)
-            })
-        } else {
-            const transaction = await getTransaction(database, store, "readonly")
-            return await transactionAction<T[]>(transaction, () => {
-                return makeValus(transaction)
-            })
-        }
+        })
     }
 
     return {
@@ -161,6 +292,7 @@ export function collection<T>(database: string, store: string, transaction?: IDB
         alter,
         createIndex,
         dropIndex,
+        insertOne,
         getIndexes,
         values
     } as LDBCollection<T>

@@ -1,33 +1,43 @@
 import { isAsyncFunction } from "../util"
-import { upgradeDatabase } from "../lib/upgrade"
+import { upgradeDatabase, type IDBUpgradeEvent } from "../lib/upgrade"
+import { makeContext, type LDBContext } from "./context"
 import { collection, type LDBCollection } from "./collection"
 
 export interface LDBUpgradeContext {
     oldVersion: number
     newVersion: number
-    collection<T>(store: string): LDBCollection<T>
+    collection<T extends object>(store: string): LDBCollection<T>
 }
 
-function makeContext(event: IDBVersionChangeEvent) {
-    const { target, oldVersion, newVersion } = event
-    const { transaction } = (target || {}) as IDBOpenDBRequest
-
-    if (!transaction) {
-        throw new ReferenceError("upgrade transaction is not defined")
-    }
-    const database = transaction.db.name
+function makeUpgradeContext(event: IDBUpgradeEvent, context: LDBContext) {
+    const { transaction, oldVersion, newVersion } = event
+    const { database, indexedDB } = context
+    const collectionContext = makeContext(database, indexedDB, transaction)
 
     return {
         oldVersion,
         newVersion,
-        collection: <T>(store: string) => collection<T>(database, store, transaction)
+        collection: <T extends object>(store: string) => {
+            return collection<T>(store, collectionContext)
+        }
     } as LDBUpgradeContext
 }
 
-export async function upgrade(database: string, version: number, callback: (context: LDBUpgradeContext) => void | Promise<void>) {
-    return await upgradeDatabase(database, version, async (db, event) => {
+export async function upgrade(
+    version: number,
+    callback: (context: LDBUpgradeContext) => void | Promise<void>,
+    context: LDBContext
+) {
+    const { database } = context
+    const event = await upgradeDatabase(database, version)
+    try {
+        const upgradeContext = makeUpgradeContext(event, context)
         if (isAsyncFunction(callback)) {
-            await callback(makeContext(event))
-        } else callback(makeContext(event))
-    })
+            await callback(upgradeContext)
+        } else {
+            callback(upgradeContext)
+        }
+    } finally {
+        event.transaction.db.close()
+    }
 }

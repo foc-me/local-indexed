@@ -1,4 +1,6 @@
-import { getTransaction, transactionAction } from "../lib/transaction"
+import { getDatabase } from "../lib/database"
+import { transactionAction } from "../lib/transaction"
+import { type LDBContext } from "./context"
 
 /**
  * storage for database object store
@@ -43,52 +45,53 @@ export interface LDBStorage {
     clear: () => Promise<void>
 }
 
-async function setItem<T extends IDBValidKey>(database: string, store: string, value: object) {
-    const transaction = await getTransaction(database, store, "readwrite")
-    return await transactionAction<T>(transaction, () => {
-        const objectStore = transaction.objectStore(store)
-        return objectStore.put(value)
-    })
-}
+export function storage(store: string, context: LDBContext) {
 
-async function getItem<T extends object>(database: string, store: string, keyValue: any) {
-    const transaction = await getTransaction(database, store, "readonly")
-    return await transactionAction<T | undefined>(transaction, () => {
-        const objectStore = transaction.objectStore(store)
-        return objectStore.get(keyValue)
-    })
-}
+    const getTransaction = async (mode?: IDBTransactionMode, options?: IDBTransactionOptions) => {
+        const { database, indexedDB } = context
+        const db = await getDatabase(database, indexedDB)
+        return db.transaction(store, mode, options)
+    }
 
-async function removeItem(database: string, store: string, keyValue: any) {
-    const transaction = await getTransaction(database, store, "readonly")
-    return await transactionAction<void>(transaction, () => {
-        const objectStore = transaction.objectStore(store)
-        return objectStore.delete(keyValue)
-    })
-}
+    const setItem = async <T extends IDBValidKey>(value: any, keyValue?: IDBValidKey) => {
+        const transaction = await getTransaction("readwrite")
+        return await transactionAction<T>(transaction, () => {
+            const objectStore = transaction.objectStore(store)
+            return objectStore.put(value, keyValue)
+        })
+    }
 
-async function length(database: string, store: string) {
-    const transaction = await getTransaction(database, store, "readonly")
-    return await transactionAction<number>(transaction, () => {
-        const objectStore = transaction.objectStore(store)
-        return objectStore.count()
-    })
-}
+    const getItem = async <T extends object>(keyValue: IDBValidKey) => {
+        const transaction = await getTransaction("readonly")
+        return await transactionAction<T | undefined>(transaction, () => {
+            const objectStore = transaction.objectStore(store)
+            return objectStore.get(keyValue)
+        })
+    }
 
-async function clear(database: string, store: string) {
-    const transaction = await getTransaction(database, store, "readonly")
-    return await transactionAction<void>(transaction, () => {
-        const objectStore = transaction.objectStore(store)
-        return objectStore.clear()
-    })
-}
+    const removeItem = async (keyValue: IDBValidKey) => {
+        const transaction = await getTransaction("readwrite")
+        return await transactionAction<void>(transaction, () => {
+            const objectStore = transaction.objectStore(store)
+            return objectStore.delete(keyValue)
+        })
+    }
 
-export function storage(database: string, store: string) {
-    return {
-        setItem: (value: any) => setItem(database, store, value),
-        getItem: <T extends object>(keyValue: any) => getItem<T>(database, store, keyValue),
-        removeItem: (keyValue: any) => removeItem(database, store, keyValue),
-        length: () => length(database, store),
-        clear: () => clear(database, store)
-    } as LDBStorage
+    const length = async () => {
+        const transaction = await getTransaction("readonly")
+        return await transactionAction<number>(transaction, () => {
+            const objectStore = transaction.objectStore(store)
+            return objectStore.count()
+        })
+    }
+
+    const clear = async () => {
+        const transaction = await getTransaction("readwrite")
+        return await transactionAction<void>(transaction, () => {
+            const objectStore = transaction.objectStore(store)
+            return objectStore.clear()
+        })
+    }
+
+    return { setItem, getItem, removeItem, length, clear } as LDBStorage
 }
