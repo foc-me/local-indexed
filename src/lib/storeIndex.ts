@@ -11,9 +11,10 @@ import { getTransaction, transactionAction } from "./transaction"
 export async function getStoreIndexNames(
     database: string,
     store: string,
+    options?: IDBTransactionOptions,
     indexedDB?: IDBFactory
 ) {
-    const transaction = await getTransaction(database, store, "readonly", indexedDB)
+    const transaction = await getTransaction(database, store, "readonly", options, indexedDB)
     const objectStore = transaction.objectStore(store)
     transaction.db.close()
     return [...objectStore.indexNames]
@@ -40,13 +41,15 @@ export async function indexAction<T>(
     index: string,
     callback: (storeIndex: IDBIndex) => IDBRequest | void,
     mode?: IDBTransactionMode,
+    options?: IDBTransactionOptions,
     indexedDB?: IDBFactory
 ): Promise<T> {
-    return await transactionAction<T>(database, store, (transaction) => {
+    const transaction = await getTransaction(database, store, mode, options, indexedDB)
+    return await transactionAction<T>(transaction, () => {
         const objectStore = transaction.objectStore(store)
         // if the index does not exist
         // objectStore.index will threw a NotFoundError
         const storeIndex = objectStore.index(index)
         return callback(storeIndex)
-    }, mode, indexedDB)
+    })
 }

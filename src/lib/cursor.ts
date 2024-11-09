@@ -70,9 +70,10 @@ export async function storeCursorAction<T>(
     callback: (target: T) => boolean | void,
     option?: IDBCursorOption,
     mode?: IDBTransactionMode,
+    options?: IDBTransactionOptions,
     indexedDB?: IDBFactory
 ) {
-    const transaction = await getTransaction(database, store, mode, indexedDB)
+    const transaction = await getTransaction(database, store, mode, options, indexedDB)
     try {
         const objectStore = transaction.objectStore(store)
         return await cursorAction(objectStore, callback, option)
@@ -104,9 +105,10 @@ export async function indexCursorAction<T>(
     callback: (target: T) => boolean | void,
     option?: IDBCursorOption,
     mode?: IDBTransactionMode,
+    options?: IDBTransactionOptions,
     indexedDB?: IDBFactory
 ) {
-    const transaction = await getTransaction(database, store, mode, indexedDB)
+    const transaction = await getTransaction(database, store, mode, options, indexedDB)
     try {
         const objectStore = transaction.objectStore(store)
         const storeIndex = objectStore.index(index)

@@ -15,7 +15,7 @@ import { getIndexedDB } from "./indexed"
 export function upgradeDatabase(
     database: string,
     version: number,
-    upgrade: (context: IDBDatabase) => void,
+    upgrade: (context: IDBDatabase, event: IDBVersionChangeEvent) => void | Promise<void>,
     indexedDB?: IDBFactory
 ): Promise<void> {
     return new Promise(async (resolve, reject) => {
@@ -25,28 +25,20 @@ export function upgradeDatabase(
         try {
             const indexed = getIndexedDB(indexedDB)
             const request = indexed.open(database, version)
-            request.addEventListener("success", () => {
-                request.result.close()
-                resolve()
-            })
+            // request.addEventListener("success", () => {
+            //     request.result.close()
+            //     resolve()
+            // })
             request.addEventListener("error", error => {
                 reject(error)
             })
-            request.addEventListener("upgradeneeded", () => {
+            request.addEventListener("upgradeneeded", async (event) => {
                 try {
-                    if (typeof upgrade === "function") {
-                        // transactionAction will close the database connection in complete callback
-                        // connection may be closed while the asynchronous function executing
-                        if (isAsyncFunction(upgrade)) {
-                            console.warn("upgrade callback should not be asynchronous")
-                        }
-
-                        // call objectStore apis in upgrade callback
-                        // apis return IDBRequest object
-                        // it means the action could be excuted
-                        // but can't get the IDBRequest.result
-                        upgrade(request.result)
-                    }
+                    if (isAsyncFunction(upgrade)) {
+                        await upgrade(request.result, event)
+                    } else upgrade(request.result, event)
+                    request.result.close()
+                    resolve()
                 } catch (error) {
                     reject(error)
                 }

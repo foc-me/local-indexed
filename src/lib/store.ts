@@ -1,5 +1,5 @@
 import { getDatabase } from "./database"
-import { transactionAction } from "./transaction"
+import { getTransaction, transactionAction } from "./transaction"
 
 /**
  * get database store names
@@ -33,11 +33,13 @@ export async function storeAction<T>(
     store: string,
     callback: (store: IDBObjectStore) => IDBRequest | void,
     mode?: IDBTransactionMode,
+    options?: IDBTransactionOptions,
     indexedDB?: IDBFactory
 ): Promise<T> {
     // createIndex and deleteIndex can only work in upgradeneeded callback
     // these two apis will threw error in normal situation
-    return await transactionAction<T>(database, store, (transaction) => {
+    const transaction = await getTransaction(database, store, mode, options, indexedDB)
+    return await transactionAction<T>(transaction, () => {
         return callback(transaction.objectStore(store))
-    }, mode, indexedDB)
+    })
 }

@@ -7,7 +7,6 @@ module.exports = {
     input: "./src/index.ts",
     output: [
         { dir: "./dist/esm", format: "esm" },
-        // should change the name "project-name"
         { dir: "./dist/dist", format: "umd", name: "local-indexed" }
     ],
     plugins: [

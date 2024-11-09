@@ -1,4 +1,4 @@
-import { storeAction } from "../lib/store"
+import { getTransaction, transactionAction } from "../lib/transaction"
 
 /**
  * storage for database object store
@@ -10,7 +10,7 @@ export interface LDBStorage {
      * @param value stored value
      * @returns promise void
      */
-    setItem: (value: object) => Promise<IDBValidKey>
+    setItem: <T extends IDBValidKey>(value: object) => Promise<T>
 
     /**
      * get value from the store
@@ -18,7 +18,7 @@ export interface LDBStorage {
      * @param keyValue key path value of the store
      * @returns promise value
      */
-    getItem: <T extends object>(keyValue: any) => Promise<T>
+    getItem: <T extends object>(keyValue: any) => Promise<T | undefined>
 
     /**
      * remove value from the store
@@ -44,31 +44,41 @@ export interface LDBStorage {
 }
 
 async function setItem<T extends IDBValidKey>(database: string, store: string, value: object) {
-    return await storeAction<T>(database, store, "readwrite", (objectStore) => {
+    const transaction = await getTransaction(database, store, "readwrite")
+    return await transactionAction<T>(transaction, () => {
+        const objectStore = transaction.objectStore(store)
         return objectStore.put(value)
     })
 }
 
 async function getItem<T extends object>(database: string, store: string, keyValue: any) {
-    return await storeAction<T | undefined>(database, store, "readonly", (objectStore) => {
+    const transaction = await getTransaction(database, store, "readonly")
+    return await transactionAction<T | undefined>(transaction, () => {
+        const objectStore = transaction.objectStore(store)
         return objectStore.get(keyValue)
     })
 }
 
 async function removeItem(database: string, store: string, keyValue: any) {
-    return await storeAction<void>(database, store, "readwrite", (objectStore) => {
+    const transaction = await getTransaction(database, store, "readonly")
+    return await transactionAction<void>(transaction, () => {
+        const objectStore = transaction.objectStore(store)
         return objectStore.delete(keyValue)
     })
 }
 
 async function length(database: string, store: string) {
-    return await storeAction<number>(database, store, "readonly", (objectStore) => {
+    const transaction = await getTransaction(database, store, "readonly")
+    return await transactionAction<number>(transaction, () => {
+        const objectStore = transaction.objectStore(store)
         return objectStore.count()
     })
 }
 
 async function clear(database: string, store: string) {
-    return await storeAction<void>(database, store, "readwrite", (objectStore) => {
+    const transaction = await getTransaction(database, store, "readonly")
+    return await transactionAction<void>(transaction, () => {
+        const objectStore = transaction.objectStore(store)
         return objectStore.clear()
     })
 }

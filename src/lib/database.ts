@@ -1,11 +1,6 @@
 import { getIndexedDB } from "./indexed"
 
 /**
- * close database
- */
-export type IDBDatabaseCloser = () => void
-
-/**
  * get the specified database
  * 
  * @param database database or database name

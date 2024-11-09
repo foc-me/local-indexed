@@ -1,15 +1,27 @@
-import { getDatabases, existsDatabase, deleteDatabase, useIndexedDB } from "../lib/indexed"
-import { getDatabase, getVersion } from "../lib/database"
+import { getDatabases, deleteDatabase, useIndexedDB } from "../lib/indexed"
+import { getDatabase } from "../lib/database"
 import { storage, type LDBStorage } from "./storage"
-import { upgrade } from "./upgrade"
+import { upgrade, type LDBUpgradeContext } from "./upgrade"
+import { collection, type LDBCollection } from "./collection"
 
 interface LDBIndexed {
     name: string,
-    version: () => Promise<number>
-    upgrade: (version: number, callback: () => void) => void
-    stores: () => Promise<string[]>
-    exists: (store: string) => Promise<boolean>
-    storage: (name: string) => LDBStorage
+    version(): Promise<number>
+    upgrade(version: number, callback: (context: LDBUpgradeContext) => void | Promise<void>): Promise<void>
+    stores(): Promise<string[]>
+    exists(store: string): Promise<boolean>
+    storage(name: string): LDBStorage
+    collection: <T>(store: string) => LDBCollection<T>
+}
+
+async function getDatabaseInfo(database: string) {
+    const databases = await getDatabases()
+    return databases.find(item => item.name === database)
+}
+
+async function getVersion(database: string) {
+    const target = await getDatabaseInfo(database)
+    return target ? target.version : 0
 }
 
 async function stores(database: string) {
@@ -27,11 +39,18 @@ function localIndexed(database: string) {
     return {
         name: database,
         version: () => getVersion(database),
-        upgrade: (version: number, callback: Function) => upgrade(database, version, callback),
+        upgrade: async (version, callback) => {
+            await upgrade(database, version, callback)
+        },
         stores: () => stores(database),
-        exists: (store: string) => exists(database, store),
-        storage: (store: string) => storage(database, store)
+        exists: (store) => exists(database, store),
+        storage: (store) => storage(database, store),
+        collection: (store) => collection(database, store)
     } as LDBIndexed
+}
+
+async function existsDatabase(database: string) {
+    return !!(await getDatabaseInfo(database))
 }
 
 localIndexed.databases = getDatabases
