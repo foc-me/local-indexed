@@ -1,11 +1,6 @@
 import { getIndexedDB } from "./indexed"
 
 /**
- * close database
- */
-export type IDBDatabaseCloser = () => void
-
-/**
  * get the specified database
  * 
  * @param database database or database name
@@ -28,17 +23,4 @@ export function getDatabase(database: string, indexedDB?: IDBFactory): Promise<I
             reject(error)
         }
     })
-}
-
-/**
- * get version of the specified database
- * 
- * @param database database name
- * @param indexedDB indexedDB factory engine
- * @returns promise version
- */
-export async function getVersion(database: string, indexedDB?: IDBFactory) {
-    const db = await getDatabase(database, indexedDB)
-    db.close()
-    return db.version
 }

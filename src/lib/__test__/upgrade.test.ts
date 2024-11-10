@@ -1,60 +1,45 @@
 import "fake-indexeddb/auto"
-import { getDatabases, existsDatabase, deleteDatabase } from "../indexed"
-import { getVersion } from "../database"
+import { getDatabases, deleteDatabase } from "../indexed"
 import { upgradeDatabase } from "../upgrade"
 
 const databaseName = "local-indexed"
-const storeName = "test-store"
-const storeOption: IDBObjectStoreParameters = {
-    keyPath: "id",
-    autoIncrement: true
-}
 
-describe("upgrade database", () => {
-    it("no database at the beginning", async () => {
+describe("check upgrade", () => {
+    it("check empty indexed", async () => {
         expect((await getDatabases()).length).toBe(0)
-        expect(await existsDatabase(databaseName)).toBe(false)
     })
-    it("create and upgrade a database", async () => {
-        await upgradeDatabase(databaseName, 1, (database) => {
-            database.createObjectStore(storeName, storeOption)
-        })
-        expect(await getVersion(databaseName)).toBe(1)
+    it("check create database", async () => {
+        const event = await upgradeDatabase(databaseName, 1)
+        const { transaction, oldVersion, newVersion, origin } = event
+        expect(origin instanceof IDBVersionChangeEvent).toBe(true)
+        expect(transaction instanceof IDBTransaction).toBe(true)
+        expect(oldVersion).toBe(0)
+        expect(newVersion).toBe(1)
+        transaction.db.close()
+
         const databases = await getDatabases()
         expect(databases.length).toBe(1)
         expect(databases[0].name).toBe(databaseName)
         expect(databases[0].version).toBe(1)
-        expect(await existsDatabase(databaseName)).toBe(true)
     })
-    it("delete the test database", async () => {
-        await deleteDatabase(databaseName)
-        expect((await getDatabases()).length).toBe(0)
-        expect(await existsDatabase(databaseName)).toBe(false)
-    })
-})
-
-describe("upgrade database 10 times", () => {
-    it("no database at the beginning", async () => {
-        expect((await getDatabases()).length).toBe(0)
-        expect(await existsDatabase(databaseName)).toBe(false)
-    })
-    it("create and upgrade a database", async () => {
-        const last = 10
-        for (let i = 1; i <= last; i++) {
-            await upgradeDatabase(databaseName, i, (database) => {
-                database.createObjectStore(`${storeName}-${i}`, storeOption)
-            })
-            expect(await getVersion(databaseName)).toBe(i)
+    it("check upgrade database 10 times", async () => {
+        for (let i = 0; i < 10; i++) {
+            const prev = i + 1
+            const current = i + 2
+            const event = await upgradeDatabase(databaseName, current)
+            const { transaction, oldVersion, newVersion } = event
+            expect(oldVersion).toBe(prev)
+            expect(newVersion).toBe(current)
+            transaction.db.close()
         }
+
         const databases = await getDatabases()
         expect(databases.length).toBe(1)
         expect(databases[0].name).toBe(databaseName)
-        expect(databases[0].version).toBe(last)
-        expect(await existsDatabase(databaseName)).toBe(true)
+        expect(databases[0].version).toBe(11)
     })
-    it("delete the test database", async () => {
+    it("check delete database", async () => {
         await deleteDatabase(databaseName)
         expect((await getDatabases()).length).toBe(0)
-        expect(await existsDatabase(databaseName)).toBe(false)
     })
 })

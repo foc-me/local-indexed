@@ -1,187 +1,57 @@
-import { getIndexedDB } from "./indexed"
-
-// export type IDBIndexOptionRecord = Record<string, { keyPath?: string | string[] } & IDBIndexParameters>
-// export type IDBIndexOptionArray = Array<[string, (string | string[])?, IDBIndexParameters?]>
-
-// /**
-//  * database store index construct
-//  * 
-//  * could be record or array like
-//  * 
-//  * @example
-//  * ```ts
-//  * {
-//  *      indexName1: { keyName?, unique?, multiEntry? },
-//  *      indexName2: { keyName?, unique?, multiEntry? }
-//  * }
-//  * ```
-//  * 
-//  * @example
-//  * ```ts
-//  * [
-//  *      [indexName1, keyName1?, { unique?, multiEntry? }?],
-//  *      [indexName2, keyName2?, { unique?, multiEntry? }?]
-//  * ]
-//  * ```
-//  */
-// export type IDBIndexOption = IDBIndexOptionRecord | IDBIndexOptionArray
-
-// /**
-//  * database store construct
-//  * 
-//  * index could be record or array
-//  * 
-//  * @example
-//  * ```ts
-//  * {
-//  *      autoIncrement?,
-//  *      keyPath?,
-//  *      index: {
-//  *          indexName1: { keyName?, unique?, multiEntry? },
-//  *          indexName2: { keyName?, unique?, multiEntry? }
-//  *      }
-//  * }
-//  * ```
-//  * 
-//  * @example
-//  * ```ts
-//  * {
-//  *      autoIncrement?,
-//  *      keyPath?,
-//  *      index: [
-//  *          [indexName1, keyName1?, { unique?, multiEntry? }],
-//  *          [indexName2, keyName2?, { unique?, multiEntry? }]
-//  *      ]
-//  * }
-//  * ```
-//  */
-// export interface IDBStoreOption {
-//     autoIncrement?: boolean
-//     keyPath?: string | string[] | null
-//     index?: IDBIndexOption
-// }
-
-// /**
-//  * format store index
-//  * 
-//  * turn LDBIndexOption to LDBIndexOptionArray
-//  * 
-//  * @param option store index construt
-//  * @returns LDBIndexOptionArray
-//  */
-// function formatStoreIndex(option: IDBIndexOption): IDBIndexOptionArray {
-//     if (Array.isArray(option)) {
-//         return option.map(item => {
-//             const [indexName, keyName, option] = item
-//             return [indexName, keyName || indexName, option]
-//         })
-//     }
-
-//     return Object.entries(option).map(item => {
-//         const [indexName, { keyPath, unique, multiEntry }] = item
-//         return [indexName, keyPath || indexName, { unique, multiEntry }]
-//     })
-// }
-
-// /**
-//  * create database store and put initial values
-//  * 
-//  * @param database database
-//  * @param name store name
-//  * @param option store construct
-//  * @param values initial values
-//  */
-// function createStore(database: IDBDatabase, name: string, option: IDBStoreOption, values?: unknown[]) {
-//     const { keyPath, autoIncrement, index } = option
-//     const store = database.createObjectStore(name, { keyPath, autoIncrement })
-
-//     if (index) {
-//         const indexes = formatStoreIndex(index).filter(item => {
-//             return !!item[0] && !!item[1]
-//         })
-//         if (indexes.length > 0) {
-//             for (const params of indexes) {
-//                 const [indexName, keyPath, option] = params
-//                 store.createIndex(indexName, keyPath || indexName, option)
-//             }
-//         }
-//     }
-
-//     if (Array.isArray(values) && values.length > 0) {
-//         for (const item of values) {
-//             store.put(item)
-//         }
-//     }
-// }
-
-// /**
-//  * delete store from database
-//  * 
-//  * @param database database
-//  * @param name store name
-//  */
-// function deleteStore(database: IDBDatabase, name: string) {
-//     database.deleteObjectStore(name)
-// }
-
-// /**
-//  * the context in database upgrade callback
-//  * to create or delete store from database
-//  */
-// interface IDBUpgradeContext {
-//     createStore: (name: string, option: IDBStoreOption, values?: unknown[]) => void
-//     deleteStore: (name: string) => void
-// }
-
-// /**
-//  * create a context object for upgrade callback
-//  * 
-//  * @param database database
-//  * @returns upgrade callback context
-//  */
-// function createUpgradeContext(database: IDBDatabase): IDBUpgradeContext {
-//     return {
-//         createStore: (name: string, option: IDBStoreOption, values?: unknown[]) => {
-//             createStore(database, name, option, values)
-//         },
-//         deleteStore: (name: string) => {
-//             deleteStore(database, name)
-//         }
-//     }
-// }
+import { getDatabases, getIndexedDB } from "./indexed"
 
 /**
- * upgrade database to the specified version
- * 
- * only works with specified version lower than current database version
- * 
- * @param name database name
- * @param version database version
- * @param upgrade upgrade callback
- * @param indexedDB indexedDB factory engine
- * @returns Promise<void>
+ * resolve value of upgradeDatabase
  */
-export function upgradeDatabase(
-    database: string,
-    version: number,
-    upgrade: (context: IDBDatabase) => void,
-    indexedDB?: IDBFactory
-): Promise<void> {
-    return new Promise(async (resolve, reject) => {
+export type IDBUpgradeEvent = {
+    /**
+     * upgrade transaction of upgradeneeded callback event
+     */
+    transaction: IDBTransaction
+    /**
+     * current version
+     */
+    oldVersion: number
+    /**
+     * upgrade version
+     */
+    newVersion: number | null
+    /**
+     * the origin event of upgradeneeded callback
+     */
+    origin: IDBVersionChangeEvent
+}
+
+/**
+ * resolve upgrade event from upgradeneeded callback
+ * 
+ * @param database database name
+ * @param version upgrade version
+ * @param indexedDB indexeddb factory
+ * @returns upgrade event
+ */
+export function upgradeDatabase(database: string, version: number, indexedDB?: IDBFactory) {
+    return new Promise<IDBUpgradeEvent>(async (resolve, reject) => {
         try {
+            const current = (await getDatabases(indexedDB)).find(item => item.name === database)
+            if (current && current.version && current.version >= version) {
+                throw new Error(`upgrade version error: version '${current.version}' can not upgrade to version '${version}'`)
+            }
+
             const indexed = getIndexedDB(indexedDB)
             const request = indexed.open(database, version)
-            request.addEventListener("success", () => {
-                request.result.close()
-                resolve()
-            })
             request.addEventListener("error", error => {
                 reject(error)
             })
-            request.addEventListener("upgradeneeded", () => {
+            request.addEventListener("upgradeneeded", event => {
                 try {
-                    if (typeof upgrade === "function") {
-                        upgrade(request.result)
+                    const { target, oldVersion, newVersion } = event
+                    const { transaction } = (target || {}) as IDBOpenDBRequest
+                    if (transaction) {
+                        // just don't use setTimeout or something like it in then function
+                        resolve({ transaction, oldVersion, newVersion, origin: event })
+                    } else {
+                        reject(new Error("version change transaction is not defined"))
                     }
                 } catch (error) {
                     reject(error)

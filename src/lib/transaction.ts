@@ -1,59 +1,33 @@
-import { getDatabase } from "./database"
+import { type IDBRequestLike } from "./request"
 
 /**
- * get transaction from database with specified stores
+ * returns the transaction request result and close the database connect
  * 
- * @param database database name
- * @param stores store names
- * @param mode transaction mode
- * @param indexedDB indexedDB factory engine
- * @returns transaction
+ * @param transaction transaction
+ * @param action transaction action
+ * @returns request result
  */
-export async function getTransaction(
-    database: string,
-    stores: string | Iterable<string>,
-    mode?: IDBTransactionMode,
-    indexedDB?: IDBFactory
+export function transactionAction<T = any>(
+    transaction: IDBTransaction,
+    action: () => IDBRequest | IDBRequestLike | void
 ) {
-    const db = await getDatabase(database, indexedDB)
-    return db.transaction(stores, mode || "readonly")
-}
-
-/**
- * take object transaction actions
- * 
- * actions come from IDBTransaction
- * 
- * the return value depends on actions
- * 
- * @param database database name
- * @param stores store names
- * @param mode transaction mode
- * @param callback action callback
- * @param indexedDB indexedDB factory engine
- * @returns promise unknown
- */
-export function transactionAction<T>(
-    database: string,
-    stores: string | Iterable<string>,
-    mode: IDBTransactionMode,
-    callback: (transaction: IDBTransaction) => IDBRequest | void,
-    indexedDB?: IDBFactory
-): Promise<T> {
-    return new Promise(async (resolve, reject) => {
+    return new Promise<T>(async (resolve, reject) => {
         try {
-            const transaction = await getTransaction(database, stores, mode, indexedDB)
-            const request = callback(transaction)
+            const request = action()
             transaction.addEventListener("complete", () => {
-                transaction.db.close()
                 resolve((request ? request.result : undefined) as T)
+                transaction.db.close()
+            })
+            transaction.addEventListener("abort", () => {
+                transaction.db.close()
+                reject(new Error("transaction abort"))
             })
             transaction.addEventListener("error", (error) => {
                 transaction.db.close()
                 reject(error)
             })
         } catch (error) {
-            reject(error)
+            transaction.db.close()
         }
     })
 }
