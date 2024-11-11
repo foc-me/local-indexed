@@ -1,7 +1,11 @@
-import { type IDBRequestLike } from "./request"
+import { type IDBRequestActionResult } from "./request"
 
 /**
- * returns the transaction request result and close the database connect
+ * transaction action
+ * 
+ * auto close database connection after action finished
+ * 
+ * result value depends on the return value of action
  * 
  * @param transaction transaction
  * @param action transaction action
@@ -9,25 +13,25 @@ import { type IDBRequestLike } from "./request"
  */
 export function transactionAction<T = any>(
     transaction: IDBTransaction,
-    action: () => IDBRequest | IDBRequestLike | void
+    action: () => IDBRequestActionResult | Promise<IDBRequestActionResult>
 ) {
     return new Promise<T>(async (resolve, reject) => {
         try {
-            const request = action()
+            const call = action()
+            const request = call instanceof Promise ? await call : call
             transaction.addEventListener("complete", () => {
                 resolve((request ? request.result : undefined) as T)
                 transaction.db.close()
             })
-            transaction.addEventListener("abort", () => {
-                transaction.db.close()
-                reject(new Error("transaction abort"))
-            })
             transaction.addEventListener("error", (error) => {
+                transaction.abort()
                 transaction.db.close()
                 reject(error)
             })
         } catch (error) {
+            transaction.abort()
             transaction.db.close()
+            reject(error)
         }
     })
 }

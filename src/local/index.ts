@@ -21,9 +21,9 @@ interface LDBIndexed {
      * upgrade database
      * 
      * @param version upgrade version
-     * @param callback upgrade callback
+     * @param action upgrade action
      */
-    upgrade(version: number, callback: (context: LDBUpgradeContext) => void | Promise<void>): Promise<void>
+    upgrade(version: number, action: (context: LDBUpgradeContext) => void | Promise<void>): Promise<void>
     /**
      * return object stores of current database
      */
@@ -78,8 +78,8 @@ function localIndexed(database: string, indexedDB?: IDBFactory) {
     return {
         name: database,
         version: () => getVersion(database),
-        upgrade: async (version, callback) => {
-            await upgrade(version, callback, context)
+        upgrade: async (version, action) => {
+            await upgrade(version, action, context)
         },
         stores: () => stores(database),
         exists: (store) => exists(database, store),

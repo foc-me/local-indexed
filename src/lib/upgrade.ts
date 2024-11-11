@@ -23,15 +23,21 @@ export type IDBUpgradeEvent = {
 }
 
 /**
- * resolve upgrade event from upgradeneeded callback
+ * database upgrade action
  * 
  * @param database database name
  * @param version upgrade version
- * @param indexedDB indexeddb factory
- * @returns upgrade event
+ * @param action upgrade action
+ * @param indexedDB indexedDB factory
+ * @returns promise void
  */
-export function upgradeDatabase(database: string, version: number, indexedDB?: IDBFactory) {
-    return new Promise<IDBUpgradeEvent>(async (resolve, reject) => {
+export function upgradeAction(
+    database: string,
+    version: number,
+    action: (event: IDBUpgradeEvent) => void | Promise<void>,
+    indexedDB?: IDBFactory
+) {
+    return new Promise<void>(async (resolve, reject) => {
         try {
             const current = (await getDatabases(indexedDB)).find(item => item.name === database)
             if (current && current.version && current.version >= version) {
@@ -40,22 +46,32 @@ export function upgradeDatabase(database: string, version: number, indexedDB?: I
 
             const indexed = getIndexedDB(indexedDB)
             const request = indexed.open(database, version)
-            request.addEventListener("error", error => {
-                reject(error)
-            })
-            request.addEventListener("upgradeneeded", event => {
-                try {
-                    const { target, oldVersion, newVersion } = event
-                    const { transaction } = (target || {}) as IDBOpenDBRequest
-                    if (transaction) {
-                        // just don't use setTimeout or something like it in then function
-                        resolve({ transaction, oldVersion, newVersion, origin: event })
-                    } else {
-                        reject(new Error("version change transaction is not defined"))
+            const close = () => {
+                if (request.result) request.result.close()
+            }
+            request.addEventListener("upgradeneeded", async event => {
+                const { target, oldVersion, newVersion } = event
+                const { transaction } = (target || {}) as IDBOpenDBRequest
+                if (transaction) {
+                    try {
+                        // just don't use setTimeout or something like it in action
+                        const call = action({ transaction, oldVersion, newVersion, origin: event })
+                        if (call instanceof Promise) await call
+                        resolve()
+                    } catch (error) {
+                        transaction.abort()
+                        reject(error)
+                    } finally {
+                        close()
                     }
-                } catch (error) {
-                    reject(error)
+                } else {
+                    close()
+                    reject(new Error("version change transaction is not defined"))
                 }
+            })
+            request.addEventListener("error", error => {
+                close()
+                reject(error)
             })
         } catch (error) {
             reject(error)

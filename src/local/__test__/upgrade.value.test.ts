@@ -21,6 +21,8 @@ describe("upgrade", () => {
                 const odd = i % 2 === 0 ? { odd: "odd" } : {}
                 const id = await collection.insertOne(Object.assign({ value: i, re10: i % 10 }, odd))
                 expect(id).toBe(i)
+                // check abort upgrade
+                // if (i === 77) throw new Error("77")
             }
         })
         expect(await indexed.version()).toBe(1)

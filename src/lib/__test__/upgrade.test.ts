@@ -1,6 +1,7 @@
 import "fake-indexeddb/auto"
 import { getDatabases, deleteDatabase } from "../indexed"
-import { upgradeDatabase } from "../upgrade"
+import { getDatabase } from "../database"
+import { upgradeAction } from "../upgrade"
 
 const databaseName = "local-indexed"
 
@@ -9,13 +10,13 @@ describe("check upgrade", () => {
         expect((await getDatabases()).length).toBe(0)
     })
     it("check create database", async () => {
-        const event = await upgradeDatabase(databaseName, 1)
-        const { transaction, oldVersion, newVersion, origin } = event
-        expect(origin instanceof IDBVersionChangeEvent).toBe(true)
-        expect(transaction instanceof IDBTransaction).toBe(true)
-        expect(oldVersion).toBe(0)
-        expect(newVersion).toBe(1)
-        transaction.db.close()
+        await upgradeAction(databaseName, 1, (event) => {
+            const { transaction, oldVersion, newVersion, origin } = event
+            expect(origin instanceof IDBVersionChangeEvent).toBe(true)
+            expect(transaction instanceof IDBTransaction).toBe(true)
+            expect(oldVersion).toBe(0)
+            expect(newVersion).toBe(1)
+        })
 
         const databases = await getDatabases()
         expect(databases.length).toBe(1)
@@ -26,11 +27,11 @@ describe("check upgrade", () => {
         for (let i = 0; i < 10; i++) {
             const prev = i + 1
             const current = i + 2
-            const event = await upgradeDatabase(databaseName, current)
-            const { transaction, oldVersion, newVersion } = event
-            expect(oldVersion).toBe(prev)
-            expect(newVersion).toBe(current)
-            transaction.db.close()
+            await upgradeAction(databaseName, current, (event) => {
+                const { oldVersion, newVersion } = event
+                expect(oldVersion).toBe(prev)
+                expect(newVersion).toBe(current)
+            })
         }
 
         const databases = await getDatabases()
