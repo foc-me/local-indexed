@@ -8,20 +8,25 @@ export type IDBRequestLike<T = any> = {
     result: T
 }
 
+export type IDBRequestActionResult = IDBRequest | IDBRequestLike | void
+
 /**
- * get objectStore or index request result
+ * objectStore or index request result
  * 
  * if the return value is IDBRequest resolve its result in success event callback
  * 
  * otherwise resolve the result directly
  * 
- * @param callback request action
+ * @param action request action
  * @returns request result
  */
-export function requestAction<T = any>(callback: () => IDBRequest | IDBRequestLike | void) {
+export function requestAction<T = any>(
+    action: () => IDBRequestActionResult | Promise<IDBRequestActionResult>
+) {
     return new Promise<T>(async (resolve, reject) => {
         try {
-            const request = callback()
+            const call = action()
+            const request = call instanceof Promise ? await call : call
             if (request instanceof IDBRequest) {
                 request.addEventListener("success", () => {
                     resolve(request.result as T)

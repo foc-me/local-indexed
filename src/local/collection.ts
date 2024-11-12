@@ -1,5 +1,5 @@
 import { transactionAction } from "../lib/transaction"
-import { requestAction, type IDBRequestLike } from "../lib/request"
+import { requestAction, type IDBRequestLike, IDBRequestActionResult } from "../lib/request"
 import { LDBContext } from "./context"
 
 /**
@@ -88,6 +88,12 @@ export interface LDBCollection<T extends object> {
      * @returns key value
      */
     insertOne: <K extends IDBValidKey>(value: any) => Promise<K>
+    /**
+     * add values to current object store
+     * 
+     * @param value insert value
+     */
+    insertMany(value: any[]): Promise<number>
     // select api
     /**
      * get all index infos of current object store
@@ -244,12 +250,13 @@ export function collection<T extends object>(store: string, context: LDBContext)
      */
     const takeRequestAction = async <T>(
         mode: IDBTransactionMode,
-        callback: (transaction: IDBTransaction) => IDBRequest | IDBRequestLike
+        callback: (transaction: IDBTransaction) => IDBRequestActionResult | Promise<IDBRequestActionResult>
     ) => {
         const { transaction, getTransaction } = context
         if (transaction) {
-            return await requestAction<T>(() => {
-                return callback(transaction)
+            return await requestAction<T>(async () => {
+                const call = callback(transaction)
+                return call instanceof Promise ? await call : call
             })
         } else {
             const transaction = await getTransaction(store, mode)
@@ -263,6 +270,17 @@ export function collection<T extends object>(store: string, context: LDBContext)
         return await takeRequestAction<K>("readwrite", (transaction: IDBTransaction) => {
             const objectStore = transaction.objectStore(store)
             return objectStore.add(value)
+        })
+    }
+
+    const insertMany = async (values: any[]) => {
+        return await takeRequestAction<number>("readwrite", async (transaction: IDBTransaction) => {
+            const objectStore = transaction.objectStore(store)
+            const ids = []
+            for (let i = 0; i < values.length; i++) {
+                ids.push(await requestAction(() => objectStore.add(values[i])))
+            }
+            return { result: ids.length }
         })
     }
 
@@ -287,12 +305,16 @@ export function collection<T extends object>(store: string, context: LDBContext)
     }
 
     return {
+        //
         create,
         drop,
         alter,
         createIndex,
         dropIndex,
+        //
         insertOne,
+        insertMany,
+        //
         getIndexes,
         values
     } as LDBCollection<T>

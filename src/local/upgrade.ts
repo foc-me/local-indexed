@@ -1,5 +1,4 @@
-import { isAsyncFunction } from "../util"
-import { upgradeDatabase, type IDBUpgradeEvent } from "../lib/upgrade"
+import { upgradeAction, type IDBUpgradeEvent } from "../lib/upgrade"
 import { makeContext, type LDBContext } from "./context"
 import { collection, type LDBCollection } from "./collection"
 
@@ -25,19 +24,13 @@ function makeUpgradeContext(event: IDBUpgradeEvent, context: LDBContext) {
 
 export async function upgrade(
     version: number,
-    callback: (context: LDBUpgradeContext) => void | Promise<void>,
+    action: (context: LDBUpgradeContext) => void | Promise<void>,
     context: LDBContext
 ) {
     const { database } = context
-    const event = await upgradeDatabase(database, version)
-    try {
+    await upgradeAction(database, version, async (event) => {
         const upgradeContext = makeUpgradeContext(event, context)
-        if (isAsyncFunction(callback)) {
-            await callback(upgradeContext)
-        } else {
-            callback(upgradeContext)
-        }
-    } finally {
-        event.transaction.db.close()
-    }
+        const call = action(upgradeContext)
+        if (call instanceof Promise) await call
+    })
 }
