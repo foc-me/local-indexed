@@ -6,7 +6,7 @@ type Store = { id: number, value: number, odd?: "odd", re10: number }
 const databaseName = "local-indexed"
 const storeName = "test-store"
 
-describe("upgrade", () => {
+describe("check indexed.upgrade with collection", () => {
     it("no database", async () => {
         const indexed = localIndexed(databaseName)
         expect(await indexed.version()).toBe(0)
@@ -14,8 +14,8 @@ describe("upgrade", () => {
     })
     it("check create and collection insertOne", async () => {
         const indexed = localIndexed(databaseName)
-        await indexed.upgrade(1, async (context) => {
-            const collection = context.collection<Store>(storeName)
+        await indexed.upgrade(1, async (event) => {
+            const collection = event.collection<Store>(storeName)
             collection.create({ keyPath: "id", autoIncrement: true })
             for (let i = 1; i <= 100; i++) {
                 const odd = i % 2 === 0 ? { odd: "odd" } : {}
@@ -45,8 +45,8 @@ describe("upgrade", () => {
     })
     it("check upgarde and collection values", async () => {
         const indexed = localIndexed(databaseName)
-        await indexed.upgrade(2, async (context) => {
-            const collection = context.collection<Store>(storeName)
+        await indexed.upgrade(2, async (event) => {
+            const collection = event.collection<Store>(storeName)
             const items = await collection.values()
             expect(items.length).toBe(100)
             collection.alter({
@@ -90,8 +90,8 @@ describe("upgrade", () => {
     })
     it("check upgrade and insertMany", async () => {
         const indexed = localIndexed(databaseName)
-        await indexed.upgrade(3, async (context) => {
-            const collection = context.collection<Store>(storeName)
+        await indexed.upgrade(3, async (event) => {
+            const collection = event.collection<Store>(storeName)
             const items = await collection.values()
             expect(items.length).toBe(100)
             collection.alter({

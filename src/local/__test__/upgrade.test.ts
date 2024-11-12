@@ -13,8 +13,8 @@ describe("check indexed.upgrade", () => {
     })
     it("check create", async () => {
         const indexed = localIndexed(databaseName)
-        await indexed.upgrade(1, (context) => {
-            const collection = context.collection(storeName)
+        await indexed.upgrade(1, (event) => {
+            const collection = event.collection(storeName)
             collection.create({ keyPath: "id", autoIncrement: true })
         })
         expect(await localIndexed.version(databaseName)).toBe(1)
@@ -28,8 +28,8 @@ describe("check indexed.upgrade", () => {
     })
     it("check createIndex", async () => {
         const indexed = localIndexed(databaseName)
-        await indexed.upgrade(2, (context) => {
-            const collection = context.collection(storeName)
+        await indexed.upgrade(2, (event) => {
+            const collection = event.collection(storeName)
             collection.createIndex("odd", { unique: false })
             collection.createIndex("re10", { unique: false })
         })
@@ -50,8 +50,8 @@ describe("check indexed.upgrade", () => {
     })
     it("check alter", async () => {
         const indexed = localIndexed(databaseName)
-        await indexed.upgrade(3, (context) => {
-            const collection = context.collection(storeName)
+        await indexed.upgrade(3, (event) => {
+            const collection = event.collection(storeName)
             collection.alter({
                 keyPath: "id",
                 autoIncrement: true,
@@ -78,8 +78,8 @@ describe("check indexed.upgrade", () => {
     })
     it("check deleteIndex", async () => {
         const indexed = localIndexed(databaseName)
-        await indexed.upgrade(4, async (context) => {
-            const collection = context.collection(storeName)
+        await indexed.upgrade(4, async (event) => {
+            const collection = event.collection(storeName)
             const indexes = await collection.getIndexes()
             for (let i = 0; i < 2; i++) {
                 collection.dropIndex(indexes[i].name)
@@ -96,8 +96,8 @@ describe("check indexed.upgrade", () => {
     })
     it("check drop", async () => {
         const indexed = localIndexed(databaseName)
-        await indexed.upgrade(5, async (context) => {
-            const collection = context.collection(storeName)
+        await indexed.upgrade(5, async (event) => {
+            const collection = event.collection(storeName)
             collection.drop()
         })
         expect(await localIndexed.version(databaseName)).toBe(5)

@@ -15,8 +15,8 @@ describe("check indexed.storage", () => {
     })
     it("check create", async () => {
         const indexed = localIndexed(databaseName)
-        await indexed.upgrade(1, (context) => {
-            const collection = context.collection(storeName)
+        await indexed.upgrade(1, (event) => {
+            const collection = event.collection(storeName)
             collection.create({ keyPath: "id", autoIncrement: true })
             collection.createIndex("odd", { unique: false })
             collection.createIndex("re10", { unique: false })
