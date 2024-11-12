@@ -73,4 +73,8 @@ describe("check cursor", () => {
             expect(item.re10).toBe(t === 10 ? 0 : t)
         }
     })
+    it("check delete database", async () => {
+        await deleteDatabase(databaseName)
+        expect((await getDatabases()).length).toBe(0)
+    })
 })
