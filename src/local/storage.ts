@@ -12,7 +12,7 @@ export interface LDBStorage {
      * @param value stored value
      * @returns promise void
      */
-    setItem: <T extends IDBValidKey>(value: object) => Promise<T>
+    setItem: <T extends IDBValidKey>(value: any, keyValue?: T) => Promise<T>
 
     /**
      * get value from the store
@@ -20,7 +20,7 @@ export interface LDBStorage {
      * @param keyValue key path value of the store
      * @returns promise value
      */
-    getItem: <T extends object>(keyValue: any) => Promise<T | undefined>
+    getItem: <T extends object>(keyValue: IDBValidKey) => Promise<T | undefined>
 
     /**
      * remove value from the store
@@ -28,7 +28,7 @@ export interface LDBStorage {
      * @param keyValue key path value of the store
      * @returns promise void
      */
-    removeItem: (keyValue: any) => Promise<void>
+    removeItem: (keyValue: IDBValidKey) => Promise<void>
 
     /**
      * count values from the store
@@ -53,7 +53,7 @@ export function storage(store: string, context: LDBContext) {
         return db.transaction(store, mode, options)
     }
 
-    const setItem = async <T extends IDBValidKey>(value: any, keyValue?: IDBValidKey) => {
+    const setItem = async <T extends IDBValidKey>(value: any, keyValue?: T) => {
         const transaction = await getTransaction("readwrite")
         return await transactionAction<T>(transaction, () => {
             const objectStore = transaction.objectStore(store)

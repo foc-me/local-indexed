@@ -1,4 +1,3 @@
-import { isAsyncFunction } from "../util"
 import { upgradeAction, type IDBUpgradeEvent } from "../lib/upgrade"
 import { makeContext, type LDBContext } from "./context"
 import { collection, type LDBCollection } from "./collection"

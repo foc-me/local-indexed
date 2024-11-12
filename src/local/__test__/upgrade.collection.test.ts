@@ -88,6 +88,43 @@ describe("upgrade", () => {
             expect(item.re10).toBe(0)
         }
     })
+    it("check upgrade and insertMany", async () => {
+        const indexed = localIndexed(databaseName)
+        await indexed.upgrade(3, async (context) => {
+            const collection = context.collection<Store>(storeName)
+            const items = await collection.values()
+            expect(items.length).toBe(100)
+            collection.alter({
+                keyPath: "id",
+                autoIncrement: true
+            })
+            const count = await collection.insertMany(items.map(item => {
+                const { id, value } = item
+                const next = Math.floor(value / 10)
+                const odd = next % 2 === 0 ? { odd: "odd" } : {}
+                const re10 = next % 10
+                return Object.assign({ id, value: next, re10 }, odd)
+            }))
+            expect(count).toBe(100)
+        })
+        expect(await indexed.version()).toBe(3)
+        expect((await indexed.stores()).length).toBe(1)
+        expect(await indexed.exists(storeName)).toBe(true)
+
+        const collection = indexed.collection<Store>(storeName)
+        const indexes = await collection.getIndexes()
+        expect(indexes.length).toBe(0)
+        const items = await collection.values()
+        expect(items.length).toBe(100)
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i]
+            const value = i + 1
+            expect(item.id).toBe(value)
+            expect(item.value).toBe(value)
+            expect(item.odd).toBe(i % 2 === 1 ? "odd" : undefined)
+            expect(item.re10).toBe((i + 1) % 10)
+        }
+    })
     it("delete database", async () => {
         await localIndexed.deleteDatabase(databaseName)
         const indexed = localIndexed(databaseName)

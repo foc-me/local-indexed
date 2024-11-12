@@ -1,1 +1,0 @@
-export { isTypeof, isAsyncFunction } from "./is"
