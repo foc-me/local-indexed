@@ -1,10 +1,5 @@
 import { type IDBRequestActionResult } from "./request"
 
-type IDBTransactionActionOptions = {
-    abort?: boolean
-    durability?: IDBTransactionDurability
-}
-
 /**
  * transaction action
  * 

@@ -5,47 +5,40 @@ import { type LDBContext } from "./context"
 /**
  * storage for database object store
  */
-export interface LDBStorage {
+export interface LDBStorage<T extends object> {
     /**
      * set value to the store
      * 
      * @param value stored value
-     * @returns promise void
      */
-    setItem: <T extends IDBValidKey>(value: any, keyValue?: T) => Promise<T>
-
+    setItem<K extends IDBValidKey>(value: any, keyValue?: K): Promise<K>
     /**
      * get value from the store
      * 
      * @param keyValue key path value of the store
-     * @returns promise value
      */
-    getItem: <T extends object>(keyValue: IDBValidKey) => Promise<T | undefined>
-
+    getItem(keyValue: IDBValidKey): Promise<T | undefined>
     /**
      * remove value from the store
      * 
      * @param keyValue key path value of the store
-     * @returns promise void
      */
-    removeItem: (keyValue: IDBValidKey) => Promise<void>
-
+    removeItem(keyValue: IDBValidKey): Promise<void>
     /**
      * count values from the store
-     * 
-     * @returns promise length
      */
-    length: () => Promise<number>
-
+    length(): Promise<number>
     /**
      * clear the store
      * 
      * @returns promise void
      */
-    clear: () => Promise<void>
+    clear(): Promise<void>
+    keys<K extends IDBValidKey>(): Promise<K[]>
+    values(): Promise<T[]>
 }
 
-export function storage(store: string, context: LDBContext) {
+export function storage<T extends object>(store: string, context: LDBContext) {
 
     const getTransaction = async (mode?: IDBTransactionMode, options?: IDBTransactionOptions) => {
         const { database, indexedDB } = context
@@ -53,15 +46,15 @@ export function storage(store: string, context: LDBContext) {
         return db.transaction(store, mode, options)
     }
 
-    const setItem = async <T extends IDBValidKey>(value: any, keyValue?: T) => {
+    const setItem = async <K extends IDBValidKey>(value: any, keyValue?: K) => {
         const transaction = await getTransaction("readwrite")
-        return await transactionAction<T>(transaction, () => {
+        return await transactionAction<K>(transaction, () => {
             const objectStore = transaction.objectStore(store)
             return objectStore.put(value, keyValue)
         })
     }
 
-    const getItem = async <T extends object>(keyValue: IDBValidKey) => {
+    const getItem = async (keyValue: IDBValidKey) => {
         const transaction = await getTransaction("readonly")
         return await transactionAction<T | undefined>(transaction, () => {
             const objectStore = transaction.objectStore(store)
@@ -93,5 +86,29 @@ export function storage(store: string, context: LDBContext) {
         })
     }
 
-    return { setItem, getItem, removeItem, length, clear } as LDBStorage
+    const keys = async <K extends IDBValidKey>() => {
+        const transaction = await getTransaction("readonly")
+        return await transactionAction<K[]>(transaction, () => {
+            const objectStore = transaction.objectStore(store)
+            return objectStore.getAllKeys()
+        })
+    }
+
+    const values = async () => {
+        const transaction = await getTransaction("readonly")
+        return await transactionAction<T[]>(transaction, () => {
+            const objectStore = transaction.objectStore(store)
+            return objectStore.getAll()
+        })
+    }
+
+    return {
+        setItem,
+        getItem,
+        removeItem,
+        length,
+        clear,
+        keys,
+        values
+    } as LDBStorage<T>
 }
