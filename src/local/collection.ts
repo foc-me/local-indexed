@@ -1,5 +1,6 @@
 import { transactionAction } from "../lib/transaction"
-import { requestAction, type IDBRequestLike, IDBRequestActionResult } from "../lib/request"
+import { requestAction, type IDBRequestActionResult } from "../lib/request"
+import { cursorAction } from "../lib/cursor"
 import { LDBContext } from "./context"
 
 /**
@@ -85,24 +86,35 @@ export interface LDBCollection<T extends object> {
      * throw error if the key value exists
      * 
      * @param value insert value
-     * @returns key value
      */
-    insertOne: <K extends IDBValidKey>(value: any) => Promise<K>
+    insertOne<K extends IDBValidKey>(value: any): Promise<K>
     /**
      * add values to current object store
      * 
      * @param value insert value
      */
-    insertMany(value: any[]): Promise<number>
+    insertMany<K extends IDBValidKey>(value: any[]): Promise<K[]>
     // select api
     /**
      * get all index infos of current object store
      */
     getIndexes(): Promise<IDBIndexInfo[]>
     /**
-     * get all values of current object store
+     * find values of current object store
      */
-    values(): Promise<T[]>
+    find(filter?: (item: T) => boolean): Promise<T[]>
+    /**
+     * find the first value of current object store that matches the filter result
+     * 
+     * @param filter filter callback
+     * @param query key value or key range
+     * @param direction cursor direction
+     */
+    findOne(
+        filter: (item: T) => boolean,
+        query?: IDBValidKey | IDBKeyRange,
+        direction?: IDBCursorDirection
+    ): Promise<T | undefined>
 }
 
 /**
@@ -267,25 +279,25 @@ export function collection<T extends object>(store: string, context: LDBContext)
     }
 
     const insertOne = async <K extends IDBValidKey>(value: any) => {
-        return await takeRequestAction<K>("readwrite", (transaction: IDBTransaction) => {
+        return await takeRequestAction<K>("readwrite", (transaction) => {
             const objectStore = transaction.objectStore(store)
             return objectStore.add(value)
         })
     }
 
-    const insertMany = async (values: any[]) => {
-        return await takeRequestAction<number>("readwrite", async (transaction: IDBTransaction) => {
+    const insertMany = async <K extends IDBValidKey>(values: any[]) => {
+        return await takeRequestAction<K[]>("readwrite", async (transaction) => {
             const objectStore = transaction.objectStore(store)
-            const ids = []
+            const result = []
             for (let i = 0; i < values.length; i++) {
-                ids.push(await requestAction(() => objectStore.add(values[i])))
+                result.push(await requestAction(() => objectStore.add(values[i])))
             }
-            return { result: ids.length }
+            return { result }
         })
     }
 
     const getIndexes = async () => {
-        return await takeRequestAction<IDBIndexInfo[]>("readonly", (transaction: IDBTransaction) => {
+        return await takeRequestAction<IDBIndexInfo[]>("readonly", (transaction) => {
             const objectStore = transaction.objectStore(store)
             const indexNames = [...objectStore.indexNames]
             const result: IDBIndexInfo[] = []
@@ -297,10 +309,29 @@ export function collection<T extends object>(store: string, context: LDBContext)
         })
     }
 
-    const values = async () => {
-        return await takeRequestAction<T[]>("readwrite", (transaction: IDBTransaction) => {
+    const find = async (filter?: (item: T) => boolean) => {
+        const results = await takeRequestAction<T[]>("readonly", (transaction) => {
             const objectStore = transaction.objectStore(store)
             return objectStore.getAll()
+        })
+        return filter ? results.filter(filter) : results
+    }
+
+    const findOne = async (
+        filter: (item: T) => boolean,
+        query?: IDBValidKey | IDBKeyRange,
+        direction?: IDBCursorDirection
+    ) => {
+        return await takeRequestAction<T | undefined>("readonly", async (transaction) => {
+            const objectStore = transaction.objectStore(store)
+            const cursor = objectStore.openCursor(query, direction)
+            const result =  await cursorAction<T>(cursor, (item, stop) => {
+                if (filter(item) === true) {
+                    stop()
+                    return true
+                }
+            })
+            return { result: result[0] }
         })
     }
 
@@ -316,6 +347,7 @@ export function collection<T extends object>(store: string, context: LDBContext)
         insertMany,
         //
         getIndexes,
-        values
+        find,
+        findOne
     } as LDBCollection<T>
 }

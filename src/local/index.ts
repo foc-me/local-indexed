@@ -41,14 +41,13 @@ interface LDBIndexed {
      * 
      * @param name store name
      */
-    storage(store: string): LDBStorage
+    storage<T extends object>(store: string): LDBStorage<T>
     /**
      * get store colleaction
      * 
      * @param store store name
-     * @returns collection
      */
-    collection: <T extends object>(store: string) => LDBCollection<T>
+    collection<T extends object>(store: string): LDBCollection<T>
 }
 
 async function getDatabaseInfo(database: string) {

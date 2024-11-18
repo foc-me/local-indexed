@@ -32,7 +32,7 @@ describe("check indexed.upgrade with collection", () => {
         const collection = indexed.collection<Store>(storeName)
         const indexes = await collection.getIndexes()
         expect(indexes.length).toBe(0)
-        const items = await collection.values()
+        const items = await collection.find()
         expect(items.length).toBe(100)
         for (let i = 0; i < items.length; i++) {
             const item = items[i]
@@ -43,11 +43,11 @@ describe("check indexed.upgrade with collection", () => {
             expect(item.re10).toBe((i + 1) % 10)
         }
     })
-    it("check upgarde and collection values", async () => {
+    it("check upgarde and collection find", async () => {
         const indexed = localIndexed(databaseName)
         await indexed.upgrade(2, async (event) => {
             const collection = event.collection<Store>(storeName)
-            const items = await collection.values()
+            const items = await collection.find()
             expect(items.length).toBe(100)
             collection.alter({
                 keyPath: "id",
@@ -77,7 +77,7 @@ describe("check indexed.upgrade with collection", () => {
         const indexes = await collection.getIndexes()
         expect(indexes.length).toBe(2)
         expect(indexes.map(item => item.name)).toEqual(["odd", "re10"])
-        const items = await collection.values()
+        const items = await collection.find()
         expect(items.length).toBe(100)
         for (let i = 0; i < items.length; i++) {
             const item = items[i]
@@ -92,20 +92,21 @@ describe("check indexed.upgrade with collection", () => {
         const indexed = localIndexed(databaseName)
         await indexed.upgrade(3, async (event) => {
             const collection = event.collection<Store>(storeName)
-            const items = await collection.values()
+            const items = await collection.find()
             expect(items.length).toBe(100)
             collection.alter({
                 keyPath: "id",
                 autoIncrement: true
             })
-            const count = await collection.insertMany(items.map(item => {
+            const ids = await collection.insertMany(items.map(item => {
                 const { id, value } = item
                 const next = Math.floor(value / 10)
                 const odd = next % 2 === 0 ? { odd: "odd" } : {}
                 const re10 = next % 10
                 return Object.assign({ id, value: next, re10 }, odd)
             }))
-            expect(count).toBe(100)
+            expect(ids.length).toBe(100)
+            ids.forEach((id, index) => expect(id).toBe(index + 1))
         })
         expect(await indexed.version()).toBe(3)
         expect((await indexed.stores()).length).toBe(1)
@@ -114,7 +115,7 @@ describe("check indexed.upgrade with collection", () => {
         const collection = indexed.collection<Store>(storeName)
         const indexes = await collection.getIndexes()
         expect(indexes.length).toBe(0)
-        const items = await collection.values()
+        const items = await collection.find()
         expect(items.length).toBe(100)
         for (let i = 0; i < items.length; i++) {
             const item = items[i]

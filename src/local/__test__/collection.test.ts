@@ -24,7 +24,7 @@ describe("check collection", () => {
             const item = Object.assign({ id: i, value: i, re10: i % 10 }, odd)
             expect(await store.insertOne<number>(item)).toBe(i)
         }
-        const result = await store.values()
+        const result = await store.find()
         expect(result.length).toBe(10)
         for (let i = 0; i < 10; i++) {
             const item = result[i]
@@ -40,12 +40,14 @@ describe("check collection", () => {
     it("check insertMany", async () => {
         const indexed = localIndexed(databaseName)
         const store = indexed.collection<Store>(storeName)
-        expect(await store.insertMany(new Array(90).fill(undefined).map((item, index) => {
+        const ids = await store.insertMany(new Array(90).fill(undefined).map((item, index) => {
             const value = index + 11
             const odd = value % 2 === 0 ? { odd: "odd" } : {}
             return Object.assign({ id: value, value, re10: value % 10 }, odd)
-        }))).toBe(90)
-        const result = await store.values()
+        }))
+        expect(ids.length).toBe(90)
+        ids.forEach((id, index) => expect(id).toBe(index + 11))
+        const result = await store.find()
         expect(result.length).toBe(100)
         for (let i = 0; i < 100; i++) {
             const item = result[i]
@@ -57,6 +59,42 @@ describe("check collection", () => {
             expect(item.odd).toBe(odd)
             expect(item.re10).toBe(re10 === 10 ? 0 : re10)
         }
+    })
+    it("check find", async () => {
+        const indexed = localIndexed(databaseName)
+        const collection = indexed.collection<Store>(storeName)
+        const results = await collection.find((item) => item.odd === "odd")
+        expect(results.length).toBe(50)
+        for (let i = 0; i < results.length; i++) {
+            const item = results[i]
+            const value = (i + 1) * 2
+            const re10 = ((i % 5) + 1) * 2
+            expect(item.id).toBe(value)
+            expect(item.value).toBe(value)
+            expect(item.odd).toBe("odd")
+            expect(item.re10).toBe(re10 === 10 ? 0 : re10)
+        }
+    })
+    it("check findOne", async () => {
+        const indexed = localIndexed(databaseName)
+        const collection = indexed.collection<Store>(storeName)
+        for (let i = 0; i < 100; i++) {
+            const value = i + 1
+            const odd = i % 2 === 1 ? "odd" : undefined
+            const re10 = i % 10 + 1
+            const result = await collection.findOne((item) => {
+                return item.id === value
+            })
+            if (result) {
+                expect(result.id).toBe(value)
+                expect(result.value).toBe(value)
+                expect(result.odd).toBe(odd)
+                expect(result.re10).toBe(re10 === 10 ? 0 : re10)
+            } else throw new Error("result should not be undefined")
+        }
+        expect(await collection.findOne((item) => {
+            return item.id === 101
+        })).toBe(undefined)
     })
     it("check delete database", async () => {
         await localIndexed.deleteDatabase(databaseName)

@@ -47,10 +47,10 @@ describe("check indexed.storage", () => {
     })
     it("check getItem", async () => {
         const indexed = localIndexed(databaseName)
-        const storage = indexed.storage(storeName)
+        const storage = indexed.storage<Store>(storeName)
         expect(await storage.length()).toBe(100)
         for (let i = 0; i < 100; i++) {
-            const item = await storage.getItem<Store>(i + 1)
+            const item = await storage.getItem(i + 1)
             if (item) {
                 expect(item.id).toBe(i + 1)
                 expect(item.value).toBe(i + 1)
@@ -60,15 +60,32 @@ describe("check indexed.storage", () => {
         }
         expect(await storage.getItem(101)).toBe(undefined)
     })
+    it("check keys and values", async () => {
+        const indexed = localIndexed(databaseName)
+        const storage = indexed.storage<Store>(storeName)
+        const keys = await storage.keys()
+        const values = await storage.values()
+        expect(keys.length).toBe(100)
+        expect(values.length).toBe(100)
+        for (let i = 0; i < values.length; i++) {
+            const key = keys[i]
+            const item = values[i]
+            expect(key).toBe(i + 1)
+            expect(item.id).toBe(i + 1)
+            expect(item.value).toBe(i + 1)
+            expect(item.odd).toBe(i % 2 === 1 ? "odd" : undefined)
+            expect(item.re10).toBe((i + 1) % 10)
+        }
+    })
     it("check removeItem", async () => {
         const indexed = localIndexed(databaseName)
-        const storage = indexed.storage(storeName)
+        const storage = indexed.storage<Store>(storeName)
         for (let i = 1; i <= 50; i++) {
             await storage.removeItem(i)
         }
         expect(await storage.length()).toBe(50)
         for (let i = 0; i < 100; i++) {
-            const item = await storage.getItem<Store>(i + 1)
+            const item = await storage.getItem(i + 1)
             if (i < 50) expect(item).toBe(undefined)
             else if (item) {
                 expect(item.id).toBe(i + 1)
