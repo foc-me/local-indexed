@@ -41,7 +41,7 @@ export function upgradeAction(
         try {
             const current = (await getDatabases(indexedDB)).find(item => item.name === database)
             if (current && current.version && current.version >= version) {
-                throw new Error(`upgrade version error: version '${current.version}' can not upgrade to version '${version}'`)
+                throw new Error(`can not upgrade version from '${current.version}' to '${version}'`)
             }
 
             const indexed = getIndexedDB(indexedDB)
