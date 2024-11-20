@@ -203,7 +203,7 @@ export function collection<T extends object>(store: string, context: LDBContext)
             }
             return containsStore(transaction, store)
         }
-        throw new Error("only use this api in upgrade callback")
+        throw new Error("collection.create requires upgrade")
     }
 
     const drop = () => {
@@ -212,7 +212,7 @@ export function collection<T extends object>(store: string, context: LDBContext)
             transaction.db.deleteObjectStore(store)
             return !containsStore(transaction, store)
         }
-        throw new Error("only use this api in upgrade callback")
+        throw new Error("collection.drop requires upgrade")
     }
 
     const alter = (options: LDBCollectionOption) => {
@@ -221,7 +221,7 @@ export function collection<T extends object>(store: string, context: LDBContext)
             if (containsStore(transaction, store)) drop()
             return create(options)
         }
-        throw new Error("only use this api in upgrade callback")
+        throw new Error("collection.alter requires upgrade")
     }
 
     const createIndex = (index: string, options: LDBIndexOption) => {
@@ -235,7 +235,7 @@ export function collection<T extends object>(store: string, context: LDBContext)
             objectStore.createIndex(index, keyPath || index, { unique, multiEntry })
             return containsIndex(objectStore, index)
         }
-        throw new Error("only use this api in upgrade callback")
+        throw new Error("collection.createIndex requires upgrade")
     }
 
     const dropIndex = (index: string) => {
@@ -248,7 +248,7 @@ export function collection<T extends object>(store: string, context: LDBContext)
             objectStore.deleteIndex(index)
             return !containsIndex(objectStore, index)
         }
-        throw new Error("only use this api in upgrade callback")
+        throw new Error("collection.dropIndex requires upgrade")
     }
 
     /**
