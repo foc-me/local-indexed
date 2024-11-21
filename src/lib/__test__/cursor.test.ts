@@ -31,8 +31,7 @@ describe("check cursor", () => {
         expect(databases.length).toBe(1)
         expect(databases[0].name).toBe(databaseName)
         expect(databases[0].version).toBe(1)
-    })
-    it("check datas", async () => {
+
         const database = await getDatabase(databaseName)
         const transaction = database.transaction(storeName, "readonly")
         const result = await transactionAction<Store[]>(transaction, () => {
@@ -106,9 +105,9 @@ describe("check cursor", () => {
     })
     it("check cursor update", async () => {
         const database = await getDatabase(databaseName)
-        const transaction = database.transaction(storeName, "readwrite")
-        const result = await transactionAction<number[]>(transaction, async () => {
-            const objectStore = transaction.objectStore(storeName)
+        const writeTrans = database.transaction(storeName, "readwrite")
+        const ids = await transactionAction<number[]>(writeTrans, async () => {
+            const objectStore = writeTrans.objectStore(storeName)
             const request = objectStore.openCursor()
             const result: number[] = []
             await cursorAction(request, async (cursor) => {
@@ -126,18 +125,16 @@ describe("check cursor", () => {
                 cursor.continue()
             })
             return { result }
-        })
-        expect(Array.isArray(result)).toBe(true)
-        expect(result.length).toBe(100)
-        for (let i = 0; i < result.length; i++) {
-            expect(result[i]).toBe(i + 1)
+        }, { autoClose: false })
+        expect(Array.isArray(ids)).toBe(true)
+        expect(ids.length).toBe(100)
+        for (let i = 0; i < ids.length; i++) {
+            expect(ids[i]).toBe(i + 1)
         }
-    })
-    it("check cursor update data", async () => {
-        const database = await getDatabase(databaseName)
-        const transaction = database.transaction(storeName, "readwrite")
-        const result = await transactionAction<Store[]>(transaction, () => {
-            const objectStore = transaction.objectStore(storeName)
+
+        const readTrans = database.transaction(storeName, "readonly")
+        const result = await transactionAction<Store[]>(readTrans, () => {
+            const objectStore = readTrans.objectStore(storeName)
             return objectStore.getAll()
         })
         expect(result.length).toBe(100)
@@ -151,9 +148,9 @@ describe("check cursor", () => {
     })
     it("check cursor delete", async () => {
         const database = await getDatabase(databaseName)
-        const transaction = database.transaction(storeName, "readwrite")
-        const result = await transactionAction<number[]>(transaction, async () => {
-            const objectStore = transaction.objectStore(storeName)
+        const writeTrans = database.transaction(storeName, "readwrite")
+        const ids = await transactionAction<number[]>(writeTrans, async () => {
+            const objectStore = writeTrans.objectStore(storeName)
             const request = objectStore.openCursor()
             const result: number[] = []
             await cursorAction(request, (cursor) => {
@@ -165,18 +162,16 @@ describe("check cursor", () => {
                 cursor.continue()
             })
             return { result }
-        })
-        expect(Array.isArray(result)).toBe(true)
-        expect(result.length).toBe(50)
-        for (let i = 0; i < result.length; i++) {
-            expect(result[i]).toBe(Math.floor(i / 5) * 10 + i % 5 + 1)
+        }, { autoClose: false })
+        expect(Array.isArray(ids)).toBe(true)
+        expect(ids.length).toBe(50)
+        for (let i = 0; i < ids.length; i++) {
+            expect(ids[i]).toBe(Math.floor(i / 5) * 10 + i % 5 + 1)
         }
-    })
-    it("check cursor delete data", async () => {
-        const database = await getDatabase(databaseName)
-        const transaction = database.transaction(storeName, "readwrite")
-        const result = await transactionAction<Store[]>(transaction, () => {
-            const objectStore = transaction.objectStore(storeName)
+
+        const readTrans = database.transaction(storeName, "readonly")
+        const result = await transactionAction<Store[]>(readTrans, () => {
+            const objectStore = readTrans.objectStore(storeName)
             return objectStore.getAll()
         })
         expect(result.length).toBe(50)
