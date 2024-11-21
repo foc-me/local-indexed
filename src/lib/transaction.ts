@@ -3,11 +3,13 @@ import { type IDBRequestActionResult } from "./request"
 /**
  * transaction action
  * 
- * auto close database connection after action finished
- * 
  * result value depends on the return value of action
  * 
- * rollback defaults to true
+ * action option defaults to { autoClose: true, abort: true }
+ * 
+ * set autoClose true to auto close database connection after action finished
+ * 
+ * set abort true to abort transaction after throw error while excuting transaction
  * 
  * means transaction will rollback after got errors
  * 
@@ -15,18 +17,25 @@ import { type IDBRequestActionResult } from "./request"
  * 
  * @param transaction transaction
  * @param action transaction action
- * @param rollback rollback type
+ * @param option transaction action option
  * @returns request result
  */
 export function transactionAction<T = any>(
     transaction: IDBTransaction,
     action: () => IDBRequestActionResult | Promise<IDBRequestActionResult>,
-    rollback: boolean = true
+    option?: { autoClose?: boolean, rollback?: boolean }
 ) {
-    const abort = () => {
+    const { autoClose = true, rollback = true } = option || {}
+    const close = () => {
+        if (autoClose === true) {
+            transaction.db.close()
+        }
+    }
+    const abortAndClose = () => {
         if (rollback === true) {
             transaction.abort()
         }
+        close()
     }
     return new Promise<T>(async (resolve, reject) => {
         try {
@@ -34,16 +43,14 @@ export function transactionAction<T = any>(
             const request = call instanceof Promise ? await call : call
             transaction.addEventListener("complete", () => {
                 resolve((request ? request.result : undefined) as T)
-                transaction.db.close()
+                close()
             })
             transaction.addEventListener("error", (error) => {
-                abort()
-                transaction.db.close()
+                abortAndClose()
                 reject(error)
             })
         } catch (error) {
-            abort()
-            transaction.db.close()
+            abortAndClose()
             reject(error)
         }
     })

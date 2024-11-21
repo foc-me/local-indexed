@@ -4,6 +4,7 @@ import { getDatabase } from "../database"
 import { upgradeAction } from "../upgrade"
 import { transactionAction } from "../transaction"
 import { cursorAction } from "../cursor"
+import { requestAction } from "../request"
 
 type Store = { id: number, value: number, odd?: "odd", re10: number }
 
@@ -30,8 +31,7 @@ describe("check cursor", () => {
         expect(databases.length).toBe(1)
         expect(databases[0].name).toBe(databaseName)
         expect(databases[0].version).toBe(1)
-    })
-    it("check datas", async () => {
+
         const database = await getDatabase(databaseName)
         const transaction = database.transaction(storeName, "readonly")
         const result = await transactionAction<Store[]>(transaction, () => {
@@ -55,9 +55,12 @@ describe("check cursor", () => {
         const transaction = database.transaction(storeName, "readonly")
         const result = await transactionAction<Store[]>(transaction, async () => {
             const objectStore = transaction.objectStore(storeName)
-            const cursor = objectStore.openCursor()
-            const result = await cursorAction<Store>(cursor, (current) => {
-                return current.odd === "odd"
+            const request = objectStore.openCursor()
+            const result: Store[] = []
+            await cursorAction(request, (cursor) => {
+                const value = cursor.value as Store
+                if (value.odd === "odd") result.push(value)
+                cursor.continue()
             })
             return { result }
         })
@@ -78,10 +81,13 @@ describe("check cursor", () => {
         const transaction = database.transaction(storeName, "readonly")
         const result = await transactionAction<Store[]>(transaction, async () => {
             const objectStore = transaction.objectStore(storeName)
-            const cursor = objectStore.openCursor()
-            const result = await cursorAction<Store>(cursor, (current, stop) => {
-                if (current.id === 51) stop()
-                return current.odd === "odd"
+            const request = objectStore.openCursor()
+            const result: Store[] = []
+            await cursorAction(request, (cursor) => {
+                const value = cursor.value as Store
+                if (value.odd === "odd") result.push(value)
+                if (value.id < 51) cursor.continue()
+                else return true
             })
             return { result }
         })
@@ -95,6 +101,87 @@ describe("check cursor", () => {
             expect(item.value).toBe(value)
             expect(item.odd).toBe("odd")
             expect(item.re10).toBe(t === 10 ? 0 : t)
+        }
+    })
+    it("check cursor update", async () => {
+        const database = await getDatabase(databaseName)
+        const writeTrans = database.transaction(storeName, "readwrite")
+        const ids = await transactionAction<number[]>(writeTrans, async () => {
+            const objectStore = writeTrans.objectStore(storeName)
+            const request = objectStore.openCursor()
+            const result: number[] = []
+            await cursorAction(request, async (cursor) => {
+                const value = cursor.value as Store
+                const nextValue = value.value * 10
+                const id = await requestAction<number>(() => {
+                    const odd = nextValue % 2 === 0 ? { odd: "odd" } : {}
+                    return cursor.update(Object.assign({
+                        id: value.id,
+                        value: nextValue,
+                        re10: nextValue % 10
+                    }, odd))
+                })
+                result.push(id)
+                cursor.continue()
+            })
+            return { result }
+        }, { autoClose: false })
+        expect(Array.isArray(ids)).toBe(true)
+        expect(ids.length).toBe(100)
+        for (let i = 0; i < ids.length; i++) {
+            expect(ids[i]).toBe(i + 1)
+        }
+
+        const readTrans = database.transaction(storeName, "readonly")
+        const result = await transactionAction<Store[]>(readTrans, () => {
+            const objectStore = readTrans.objectStore(storeName)
+            return objectStore.getAll()
+        })
+        expect(result.length).toBe(100)
+        for (let i = 0; i < result.length; i++) {
+            const item = result[i]
+            expect(item.id).toBe(i + 1)
+            expect(item.value).toBe((i + 1) * 10)
+            expect(item.odd).toBe("odd")
+            expect(item.re10).toBe(0)
+        }
+    })
+    it("check cursor delete", async () => {
+        const database = await getDatabase(databaseName)
+        const writeTrans = database.transaction(storeName, "readwrite")
+        const ids = await transactionAction<number[]>(writeTrans, async () => {
+            const objectStore = writeTrans.objectStore(storeName)
+            const request = objectStore.openCursor()
+            const result: number[] = []
+            await cursorAction(request, (cursor) => {
+                const value = cursor.value as Store
+                if ([1, 2, 3, 4, 5].includes(value.id % 10)) {
+                    cursor.delete()
+                    result.push(value.id)
+                }
+                cursor.continue()
+            })
+            return { result }
+        }, { autoClose: false })
+        expect(Array.isArray(ids)).toBe(true)
+        expect(ids.length).toBe(50)
+        for (let i = 0; i < ids.length; i++) {
+            expect(ids[i]).toBe(Math.floor(i / 5) * 10 + i % 5 + 1)
+        }
+
+        const readTrans = database.transaction(storeName, "readonly")
+        const result = await transactionAction<Store[]>(readTrans, () => {
+            const objectStore = readTrans.objectStore(storeName)
+            return objectStore.getAll()
+        })
+        expect(result.length).toBe(50)
+        for (let i = 0; i < result.length; i++) {
+            const item = result[i]
+            const id = Math.floor(i / 5) * 10 + i % 5 + 6
+            expect(item.id).toBe(id)
+            expect(item.value).toBe(id * 10)
+            expect(item.odd).toBe("odd")
+            expect(item.re10).toBe(0)
         }
     })
     it("check delete database", async () => {
