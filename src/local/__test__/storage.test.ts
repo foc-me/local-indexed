@@ -96,6 +96,9 @@ describe("check indexed.storage", () => {
         }
         expect(await storage.getItem(101)).toBe(undefined)
     })
+    it("check removeItems", async () => {
+        
+    })
     it("check clear", async () => {
         const indexed = localIndexed(databaseName)
         const storage = indexed.storage(storeName)
