@@ -1,21 +1,21 @@
-export function cursorAction<T extends object>(
+export function cursorAction<T = void>(
     request: IDBRequest<IDBCursorWithValue | null>,
-    action: (current: T, stop: () => void) => boolean | void
+    action: (cursor: IDBCursorWithValue) => (T | void) | Promise<T | void>
 ) {
-    return new Promise<T[]>((resolve, reject) => {
-        const result: T[] = []
-        const stop = { current: false }
-        const setStop = () => { stop.current = true }
-        request.addEventListener("success", () => {
-            const cursor = request.result
-            if (cursor) {
-                if (action(cursor.value, setStop) === true) {
-                    result.push(cursor.value)
+    return new Promise<T>((resolve, reject) => {
+        request.addEventListener("success", async () => {
+            if (request.result) {
+                try {
+                    const call = action(request.result)
+                    const target = call instanceof Promise ? await call : call
+                    if (target !== undefined && target !== null) {
+                        resolve(target)
+                    }
+                } catch (error) {
+                    reject(error)
                 }
-                if (stop.current === false) cursor.continue()
-                else resolve(result)
             } else {
-                resolve(result)
+                resolve(undefined as T)
             }
         })
         request.addEventListener("error", (error) => {
