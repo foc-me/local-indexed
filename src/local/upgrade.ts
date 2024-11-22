@@ -24,13 +24,11 @@ function makeUpgradeContext(event: IDBUpgradeEvent, context: LDBContext) {
 
 export async function upgrade(
     version: number,
-    action: (context: LDBUpgradeContext) => void | Promise<void>,
+    action: (context: LDBUpgradeContext) => void,
     context: LDBContext
 ) {
     const { database } = context
-    await upgradeAction(database, version, async (event) => {
-        const upgradeContext = makeUpgradeContext(event, context)
-        const call = action(upgradeContext)
-        if (call instanceof Promise) await call
+    await upgradeAction(database, version, (event) => {
+        return action(makeUpgradeContext(event, context))
     })
 }

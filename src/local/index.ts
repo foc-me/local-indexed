@@ -4,6 +4,7 @@ import { makeContext } from "./context"
 import { storage, type LDBStorage } from "./storage"
 import { upgrade, type LDBUpgradeContext } from "./upgrade"
 import { collection, type LDBCollection } from "./collection"
+import { transaction, type LDBTransactionContext } from "./transaction"
 
 /**
  * local indexed database
@@ -48,6 +49,7 @@ interface LDBIndexed {
      * @param store store name
      */
     collection<T extends object>(store: string): LDBCollection<T>
+    transaction(action: (context: LDBTransactionContext) => void | Promise<void>): Promise<void>
 }
 
 async function getDatabaseInfo(database: string) {
@@ -77,13 +79,12 @@ function localIndexed(database: string, indexedDB?: IDBFactory) {
     return {
         name: database,
         version: () => getVersion(database),
-        upgrade: async (version, action) => {
-            await upgrade(version, action, context)
-        },
+        upgrade: (version, action) => upgrade(version, action, context),
         stores: () => stores(database),
         exists: (store) => exists(database, store),
         storage: (store) => storage(store, context),
-        collection: (store) => collection(store, context)
+        collection: (store) => collection(store, context),
+        transaction: (action) => transaction(action, context)
     } as LDBIndexed
 }
 
