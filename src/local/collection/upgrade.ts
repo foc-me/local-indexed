@@ -42,43 +42,51 @@ function containsStore(transaction: IDBTransaction, store: string) {
 }
 
 /**
- * pick up create index options from create object store options
+ * pick up create index option from create object store option
  * 
- * @param options create object store options
- * @returns splited options
+ * @param option create object store option
+ * @returns splited option
  */
-function splitCollectionOption(options: LDBCollectionOption) {
-    const { keyPath, autoIncrement, index } = options
+function splitCollectionOption(option: LDBCollectionOption) {
+    const { keyPath, autoIncrement, index } = option
     return [{ keyPath, autoIncrement }, index] as [IDBObjectStoreParameters, Record<string, LDBIndexOption>]
 }
 
 /**
  * params of objectStore.createIndex
  */
-type LDBCreateIndexOptions = [string, (string | string[]), IDBIndexParameters?]
+type LDBCreateIndexOption = [string, (string | string[]), IDBIndexParameters?]
 
 /**
- * turn create index options to the type of objectStore.createIndex params
+ * turn create index option to the type of objectStore.createIndex params
  * 
- * @param options create index options
+ * @param option create index option
  * @returns result
  */
-function formatIndexOption(options?: Record<string, LDBIndexOption>) {
-    return Object.entries(options || {}).map(([key, option]) => {
-        const { keyPath, unique, multiEntry } = option
-        return [key, keyPath || key, { unique, multiEntry }] as LDBCreateIndexOptions
+function formatIndexOption(option?: Record<string, LDBIndexOption>) {
+    return Object.entries(option || {}).map(([key, value]) => {
+        const { keyPath, unique, multiEntry } = value
+        return [key, keyPath || key, { unique, multiEntry }] as LDBCreateIndexOption
     })
 }
 
-export function create(store: string, context: LDBContext, options: LDBCollectionOption) {
+/**
+ * create store
+ * 
+ * @param store store name
+ * @param context database context
+ * @param option create store option
+ * @returns true if store exists
+ */
+export function create(store: string, context: LDBContext, option: LDBCollectionOption) {
     const { transaction } = context
     if (checkVersionChange(transaction)) {
         if (containsStore(transaction, store)) {
             throw new ReferenceError(`objectStore '${store}' already exists`)
         }
-        const [storeParams, indexOptions] = splitCollectionOption(options)
-        const objectStore = transaction.db.createObjectStore(store, storeParams)
-        const indexParams = formatIndexOption(indexOptions)
+        const [storeOption, indexOption] = splitCollectionOption(option)
+        const objectStore = transaction.db.createObjectStore(store, storeOption)
+        const indexParams = formatIndexOption(indexOption)
         for (let i = 0; i < indexParams.length; i++) {
             const [name, keyPath, option] = indexParams[i]
             objectStore.createIndex(name, keyPath, option)
@@ -88,6 +96,13 @@ export function create(store: string, context: LDBContext, options: LDBCollectio
     throw new Error("collection.create requires upgrade")
 }
 
+/**
+ * delete store
+ * 
+ * @param store store name
+ * @param context database context
+ * @returns true if store not exists
+ */
 export function drop(store: string, context: LDBContext) {
     const { transaction } = context
     if (checkVersionChange(transaction)) {
@@ -97,11 +112,19 @@ export function drop(store: string, context: LDBContext) {
     throw new Error("collection.drop requires upgrade")
 }
 
-export function alter(store: string, context: LDBContext, options: LDBCollectionOption) {
+/**
+ * recreate store
+ * 
+ * @param store store name
+ * @param context database context
+ * @param option create store option
+ * @returns true if store exists
+ */
+export function alter(store: string, context: LDBContext, option: LDBCollectionOption) {
     const { transaction } = context
     if (checkVersionChange(transaction)) {
         if (containsStore(transaction, store)) drop(store, context)
-        return create(store, context, options)
+        return create(store, context, option)
     }
     throw new Error("collection.alter requires upgrade")
 }
@@ -111,26 +134,43 @@ export function alter(store: string, context: LDBContext, options: LDBCollection
  * 
  * @param objectStore objectStore
  * @param index index name
- * @returns result
+ * @returns true if index exists
  */
 function containsIndex(objectStore: IDBObjectStore, index: string) {
     return objectStore.indexNames.contains(index)
 }
 
-export function createIndex(store: string, context: LDBContext, index: string, options: LDBIndexOption) {
+/**
+ * create store index
+ * 
+ * @param store store name
+ * @param context database context
+ * @param index index name
+ * @param option create index option
+ * @returns true if index exists
+ */
+export function createIndex(store: string, context: LDBContext, index: string, option: LDBIndexOption) {
     const { transaction } = context
     if (checkVersionChange(transaction)) {
         if (!containsStore(transaction, store)) {
             throw new ReferenceError(`objectStore '${store}' does not exist`)
         }
         const objectStore = transaction.objectStore(store)
-        const { keyPath, unique, multiEntry } = options
+        const { keyPath, unique, multiEntry } = option
         objectStore.createIndex(index, keyPath || index, { unique, multiEntry })
         return containsIndex(objectStore, index)
     }
     throw new Error("collection.createIndex requires upgrade")
 }
 
+/**
+ * delete store index
+ * 
+ * @param store store name
+ * @param context database context
+ * @param index index name
+ * @returns true if index not exists
+ */
 export function dropIndex(store: string, context: LDBContext, index: string) {
     const { transaction } = context
     if (checkVersionChange(transaction)) {

@@ -1,15 +1,6 @@
+import { type IDBActionRequest, requestAction } from "../../lib/request"
 import { transactionAction } from "../../lib/transaction"
-import { requestAction, type IDBRequestActionResult } from "../../lib/request"
 import { LDBContext } from "../context"
-import {
-    type LDBIndexOption,
-    type LDBCollectionOption,
-    create,
-    drop,
-    alter,
-    createIndex,
-    dropIndex
-} from "./upgrade"
 import {
     type IDBIndexInfo,
     insertOne,
@@ -25,6 +16,15 @@ import {
     findOne,
     findMany
 } from "./action"
+import {
+    type LDBIndexOption,
+    type LDBCollectionOption,
+    create,
+    drop,
+    alter,
+    createIndex,
+    dropIndex
+} from "./upgrade"
 
 /**
  * collection of indexeddb database
@@ -32,42 +32,38 @@ import {
 export interface LDBCollection<T extends object> {
     // upgrade api
     /**
-     * create current object store
-     * 
-     * throw error if current object store exists
+     * create store
      * 
      * only use in upgrade callback
      * 
-     * @param options create object store options
+     * @param option create store option
      */
-    create(options: LDBCollectionOption): boolean
+    create(option: LDBCollectionOption): boolean
     /**
-     * delete current object store
+     * delete store
      * 
      * only use in upgrade callback
      */
     drop(): boolean
     /**
-     * create current object store
-     * 
-     * delete current object store if exists
+     * recreate store
      * 
      * only use in upgrade callback
      * 
-     * @param options create object store options
+     * @param option create object store option
      */
-    alter(options: LDBCollectionOption): boolean
+    alter(option: LDBCollectionOption): boolean
     /**
-     * create object store index
+     * create store index
      * 
      * only use in upgrade callback
      * 
      * @param index index name
-     * @param options create store index options
+     * @param option create store index option
      */
-    createIndex(index: string, options: LDBIndexOption): boolean
+    createIndex(index: string, option: LDBIndexOption): boolean
     /**
-     * delete object store index
+     * delete store index
      * 
      * only use in upgrade callback
      * 
@@ -76,35 +72,65 @@ export interface LDBCollection<T extends object> {
     dropIndex(index: string): boolean
     // action api
     /**
-     * add a value to current object store
-     * 
-     * throw error if the key value exists
+     * insert one value
      * 
      * @param value insert value
      */
     insertOne<K extends IDBValidKey>(value: any): Promise<K>
     /**
-     * add values to current object store
+     * insert values
      * 
-     * @param value insert value
+     * @param values insert valeus
      */
     insertMany<K extends IDBValidKey>(value: any[]): Promise<K[]>
+    /**
+     * update one value
+     * 
+     * @param value update value
+     */
     update<K extends IDBValidKey>(value: any): Promise<K>
+    /**
+     * update one value with cursor
+     * 
+     * close cursor after first value updated
+     * 
+     * @param filter cursor filter
+     * @param option cursor option
+     */
     updateOne<K extends IDBValidKey>(
-        filter: (item: T) => T | void,
+        filter: (item: T) => any,
         option?: {
             query?: IDBValidKey | IDBKeyRange,
             direction?: IDBCursorDirection
         }
     ): Promise<K | undefined>
+    /**
+     * update values with cursor
+     * 
+     * @param filter cursor filter
+     * @param option cursor option
+     */
     updateMany<K extends IDBValidKey>(
-        filter: (item: T) => T | void,
+        filter: (item: T) => any,
         option?: {
             query?: IDBValidKey | IDBKeyRange,
             direction?: IDBCursorDirection
         }
     ): Promise<K[]>
+    /**
+     * delete value by keys
+     * 
+     * @param value delete keys
+     */
     remove(value: IDBValidKey): Promise<void>
+    /**
+     * delete value with cursor
+     * 
+     * close cursor after first value deleted
+     * 
+     * @param filter cursor filter
+     * @param option cursor option
+     */
     removeOne(
         filter: (item: T) => boolean,
         option?: {
@@ -112,6 +138,12 @@ export interface LDBCollection<T extends object> {
             direction?: IDBCursorDirection
         }
     ): Promise<number>
+    /**
+     * delete values with cursor
+     * 
+     * @param filter cursor filter
+     * @param option cursor option
+     */
     removeMany(
         filter: (item: T) => boolean,
         option?: {
@@ -120,21 +152,34 @@ export interface LDBCollection<T extends object> {
         }
     ): Promise<number>
     /**
-     * get all index infos of current object store
+     * get index detials in specified object store
      */
     getIndexes(): Promise<IDBIndexInfo[]>
     /**
-     * find values of current object store
+     * get value by key
+     * 
+     * @param value key value
      */
     find(value: IDBValidKey): Promise<T | undefined>
+    /**
+     * find values by key range
+     * 
+     * @param value key range
+     */
     find(value: IDBKeyRange): Promise<T[]>
+    /**
+     * find values by filter
+     * 
+     * @param filter value filter
+     */
     find(filter?: (item: T) => boolean): Promise<T[]>
     /**
-     * find the first value of current object store that matches the filter result
+     * get value with cursor
      * 
-     * @param filter filter callback
-     * @param query key value or key range
-     * @param direction cursor direction
+     * close cursor after first value finded
+     * 
+     * @param filter cursor filter
+     * @param option cursor option
      */
     findOne(
         filter: (item: T) => boolean,
@@ -143,6 +188,12 @@ export interface LDBCollection<T extends object> {
             direction?: IDBCursorDirection
         }
     ): Promise<T | undefined>
+    /**
+     * get values with cursor
+     * 
+     * @param filter cursor filter
+     * @param option cursor option
+     */
     findMany(
         filter: (item: T) => boolean,
         option?: {
@@ -167,19 +218,19 @@ export function collection<T extends object>(store: string, context: LDBContext)
      * @param callback transaction action
      * @returns request
      */
-    const takeStoreAction = async <T>(
+    const makeTransactionAction = async <T>(
         mode: IDBTransactionMode,
-        callback: (objectStore: IDBObjectStore) => IDBRequestActionResult | Promise<IDBRequestActionResult>
+        callback: (objectStore: IDBObjectStore) => IDBActionRequest | Promise<IDBActionRequest>
     ) => {
         const { transaction, getTransaction } = context
         if (transaction) {
             const objectStore = transaction.objectStore(store)
-            return await requestAction<T>(() => {
+            return requestAction<T>(() => {
                 return callback(objectStore)
             })
         } else {
             const transaction = await getTransaction(store, mode)
-            return await transactionAction<T>(transaction, () => {
+            return transactionAction<T>(transaction, () => {
                 const objectStore = transaction.objectStore(store)
                 return callback(objectStore)
             })
@@ -188,80 +239,80 @@ export function collection<T extends object>(store: string, context: LDBContext)
 
     return {
         //
-        create: (options) => {
-            return create(store, context, options)
+        create: (option) => {
+            return create(store, context, option)
         },
         drop: () => {
             return drop(store, context)
         },
-        alter: (options) => {
-            return alter(store, context, options)
+        alter: (option) => {
+            return alter(store, context, option)
         },
-        createIndex: (index, options) => {
-            return createIndex(store, context, index, options)
+        createIndex: (index, option) => {
+            return createIndex(store, context, index, option)
         },
         dropIndex: (index) => {
             return dropIndex(store, context, index)
         },
         //
-        insertOne: async (value) => {
-            return await takeStoreAction("readwrite", (objectStore) => {
+        insertOne: (value) => {
+            return makeTransactionAction("readwrite", (objectStore) => {
                 return insertOne(objectStore, value)
             })
         },
-        insertMany: async (value) => {
-            return await takeStoreAction("readwrite", (objectStore) => {
+        insertMany: (value) => {
+            return makeTransactionAction("readwrite", (objectStore) => {
                 return insertMany(objectStore, value)
             })
         },
-        update: async (value) => {
-            return await takeStoreAction("readwrite", (objectStore) => {
+        update: (value) => {
+            return makeTransactionAction("readwrite", (objectStore) => {
                 return update(objectStore, value)
             })
         },
-        updateOne: async (filter, option) => {
-            return await takeStoreAction("readwrite", (objectStore) => {
+        updateOne: (filter, option) => {
+            return makeTransactionAction("readwrite", (objectStore) => {
                 return updateOne(objectStore, filter, option)
             })
         },
-        updateMany: async (filter, option) => {
-            return await takeStoreAction("readwrite", (objectStore) => {
+        updateMany: (filter, option) => {
+            return makeTransactionAction("readwrite", (objectStore) => {
                 return updateMany(objectStore, filter, option)
             })
         },
-        remove: async (value) => {
-            return await takeStoreAction("readwrite", (objectStore) => {
+        remove: (value) => {
+            return makeTransactionAction("readwrite", (objectStore) => {
                 return remove(objectStore, value)
             })
         },
-        removeOne: async (filter, option) => {
-            return await takeStoreAction("readwrite", (objectStore) => {
+        removeOne: (filter, option) => {
+            return makeTransactionAction("readwrite", (objectStore) => {
                 return removeOne(objectStore, filter, option)
             })
         },
-        removeMany: async (filter, option) => {
-            return await takeStoreAction("readwrite", (objectStore) => {
+        removeMany: (filter, option) => {
+            return makeTransactionAction("readwrite", (objectStore) => {
                 return removeMany(objectStore, filter, option)
             })
         },
-        getIndexes: async () => {
-            return await takeStoreAction("readonly", (objectStore) => {
+        getIndexes: () => {
+            return makeTransactionAction("readonly", (objectStore) => {
                 return getIndexes(objectStore)
             })
         },
-        find: async (filter) => {
-            return await takeStoreAction("readonly", (objectStore) => {
+        find: (filter) => {
+            return makeTransactionAction("readonly", (objectStore) => {
                 return find<T>(objectStore, filter)
             })
         },
-        findOne: async (filter, options) => {
-            return await takeStoreAction("readonly", (objectStore) => {
-                return findOne<T>(objectStore, filter, options)
+        findOne: (filter, option) => {
+            return makeTransactionAction("readonly", (objectStore) => {
+                return findOne<T>(objectStore, filter, option)
             })
         },
-        findMany: async (filter, options) => {
-            return await takeStoreAction("readonly", (objectStore) => {
-                return findMany<T>(objectStore, filter, options)
+        findMany: (filter, option) => {
+            return makeTransactionAction("readonly", (objectStore) => {
+                return findMany<T>(objectStore, filter, option)
             })
         }
     } as LDBCollection<T>

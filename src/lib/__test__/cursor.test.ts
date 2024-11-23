@@ -43,11 +43,11 @@ describe("check cursor", () => {
         for (let i = 0; i < result.length; i++) {
             const item = result[i]
             const value = i + 1
-            const t = i % 10 + 1
+            const re10 = i % 10 + 1
             expect(item.id).toBe(value)
             expect(item.value).toBe(value)
             expect(item.odd).toBe(i % 2 === 0 ? undefined : "odd")
-            expect(item.re10).toBe(t === 10 ? 0 : t)
+            expect(item.re10).toBe(re10 === 10 ? 0 : re10)
         }
     })
     it("check cursor", async () => {
@@ -69,11 +69,11 @@ describe("check cursor", () => {
         for (let i = 0; i < result.length; i++) {
             const item = result[i]
             const value = (i + 1) * 2
-            const t = (i % 5 + 1) * 2
+            const re10 = (i % 5 + 1) * 2
             expect(item.id).toBe(value)
             expect(item.value).toBe(value)
             expect(item.odd).toBe("odd")
-            expect(item.re10).toBe(t === 10 ? 0 : t)
+            expect(item.re10).toBe(re10 === 10 ? 0 : re10)
         }
     })
     it("check cursor stop", async () => {
@@ -96,11 +96,11 @@ describe("check cursor", () => {
         for (let i = 0; i < result.length; i++) {
             const item = result[i]
             const value = (i + 1) * 2
-            const t = (i % 5 + 1) * 2
+            const re10 = (i % 5 + 1) * 2
             expect(item.id).toBe(value)
             expect(item.value).toBe(value)
             expect(item.odd).toBe("odd")
-            expect(item.re10).toBe(t === 10 ? 0 : t)
+            expect(item.re10).toBe(re10 === 10 ? 0 : re10)
         }
     })
     it("check cursor update", async () => {

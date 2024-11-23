@@ -27,14 +27,16 @@ export type IDBUpgradeEvent = {
  * 
  * @param database database name
  * @param version upgrade version
- * @param action upgrade action
+ * @param callback action callback
+ * @param rollback rollback setting default to true
  * @param indexedDB indexedDB factory
  * @returns promise void
  */
 export function upgradeAction(
     database: string,
     version: number,
-    action: (event: IDBUpgradeEvent) => void | Promise<void>,
+    callback: (event: IDBUpgradeEvent) => void | Promise<void>,
+    rollback: boolean = true,
     indexedDB?: IDBFactory
 ) {
     return new Promise<void>(async (resolve, reject) => {
@@ -54,12 +56,11 @@ export function upgradeAction(
                 const { transaction } = (target || {}) as IDBOpenDBRequest
                 if (transaction) {
                     try {
-                        // just don't use setTimeout or something like it in action
-                        const call = action({ transaction, oldVersion, newVersion, origin: event })
+                        const call = callback({ transaction, oldVersion, newVersion, origin: event })
                         if (call instanceof Promise) await call
                         resolve()
                     } catch (error) {
-                        transaction.abort()
+                        if (rollback === true) transaction.abort()
                         reject(error)
                     } finally {
                         close()

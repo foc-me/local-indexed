@@ -1,28 +1,27 @@
-import { type IDBRequestActionResult } from "./request"
+import { type IDBActionRequest } from "./request"
 
 /**
- * transaction action
+ * IBDTransaction action
  * 
- * result value depends on the return value of action
+ * the action callback could return a IDBRequest or something like it (object with result attribute) if needed
  * 
  * action option defaults to { autoClose: true, abort: true }
  * 
- * set autoClose true to auto close database connection after action finished
+ * by default the action will rollback if some error throwed while action excution
+ * and close the database connection after action finished
  * 
- * set abort true to abort transaction after throw error while excuting transaction
+ * -- set autoClose true to auto close database connection after action finished
  * 
- * means transaction will rollback after got errors
- * 
- * otherwise the transaction will keep the existing data
+ * -- set abort true to abort transaction after throw error while excuting transaction
  * 
  * @param transaction transaction
- * @param action transaction action
- * @param option transaction action option
+ * @param callback action callback
+ * @param option action option
  * @returns request result
  */
 export function transactionAction<T = any>(
     transaction: IDBTransaction,
-    action: () => IDBRequestActionResult | Promise<IDBRequestActionResult>,
+    callback: () => IDBActionRequest | Promise<IDBActionRequest>,
     option?: { autoClose?: boolean, rollback?: boolean }
 ) {
     const { autoClose = true, rollback = true } = option || {}
@@ -39,7 +38,7 @@ export function transactionAction<T = any>(
     }
     return new Promise<T>(async (resolve, reject) => {
         try {
-            const call = action()
+            const call = callback()
             const request = call instanceof Promise ? await call : call
             transaction.addEventListener("complete", () => {
                 resolve((request ? request.result : undefined) as T)

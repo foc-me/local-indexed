@@ -1,13 +1,24 @@
-import { upgradeAction, type IDBUpgradeEvent } from "../lib/upgrade"
-import { makeContext, type LDBContext } from "./context"
-import { collection, type LDBCollection } from "./collection"
+import { type IDBUpgradeEvent, upgradeAction } from "../lib/upgrade"
+import { type LDBContext, makeContext } from "./context"
+import { type LDBCollection, collection } from "./collection"
 
+/**
+ * upgrade context
+ */
 export interface LDBUpgradeContext {
     oldVersion: number
     newVersion: number
     collection<T extends object>(store: string): LDBCollection<T>
+    abort(): void
 }
 
+/**
+ * make upgrade context
+ * 
+ * @param event upgradeneeded event
+ * @param context database context
+ * @returns upgrade content
+ */
 function makeUpgradeContext(event: IDBUpgradeEvent, context: LDBContext) {
     const { transaction, oldVersion, newVersion } = event
     const { database, indexedDB } = context
@@ -18,19 +29,25 @@ function makeUpgradeContext(event: IDBUpgradeEvent, context: LDBContext) {
         newVersion,
         collection: <T extends object>(store: string) => {
             return collection<T>(store, collectionContext)
-        }
+        },
+        abort: () => { transaction.abort() }
     } as LDBUpgradeContext
 }
 
+/**
+ * indexed upgrade
+ * 
+ * @param version upgrade version
+ * @param callback upgrade callback
+ * @param context database context
+ */
 export async function upgrade(
     version: number,
-    action: (context: LDBUpgradeContext) => void | Promise<void>,
+    callback: (context: LDBUpgradeContext) => void,
     context: LDBContext
 ) {
     const { database } = context
-    await upgradeAction(database, version, async (event) => {
-        const upgradeContext = makeUpgradeContext(event, context)
-        const call = action(upgradeContext)
-        if (call instanceof Promise) await call
+    await upgradeAction(database, version, (event) => {
+        return callback(makeUpgradeContext(event, context))
     })
 }

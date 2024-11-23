@@ -1,4 +1,5 @@
 import { getDatabase } from "../lib/database"
+import { type IDBActionRequest } from "../lib/request"
 import { transactionAction } from "../lib/transaction"
 import { type LDBContext } from "./context"
 
@@ -34,81 +35,66 @@ export interface LDBStorage<T extends object> {
      * @returns promise void
      */
     clear(): Promise<void>
+    /**
+     * get all keys
+     */
     keys<K extends IDBValidKey>(): Promise<K[]>
+    /**
+     * get all values
+     */
     values(): Promise<T[]>
 }
 
 export function storage<T extends object>(store: string, context: LDBContext) {
-
-    const getTransaction = async (mode?: IDBTransactionMode, options?: IDBTransactionOptions) => {
+    const makeTransactionAction = async <K>(
+        mode: IDBTransactionMode,
+        callback: (objectStore: IDBObjectStore) => IDBActionRequest | Promise<IDBActionRequest>,
+        option?: IDBTransactionOptions
+    ) => {
         const { database, indexedDB } = context
         const db = await getDatabase(database, indexedDB)
-        return db.transaction(store, mode, options)
-    }
-
-    const setItem = async <K extends IDBValidKey>(value: any, keyValue?: K) => {
-        const transaction = await getTransaction("readwrite")
-        return await transactionAction<K>(transaction, () => {
+        const transaction = db.transaction(store, mode, option)
+        return transactionAction<K>(transaction, () => {
             const objectStore = transaction.objectStore(store)
-            return objectStore.put(value, keyValue)
-        })
-    }
-
-    const getItem = async (keyValue: IDBValidKey | IDBKeyRange) => {
-        const transaction = await getTransaction("readonly")
-        return await transactionAction<T | undefined>(transaction, () => {
-            const objectStore = transaction.objectStore(store)
-            return objectStore.get(keyValue)
-        })
-    }
-
-    const removeItem = async (keyValue: IDBValidKey | IDBKeyRange) => {
-        const transaction = await getTransaction("readwrite")
-        return await transactionAction<void>(transaction, () => {
-            const objectStore = transaction.objectStore(store)
-            return objectStore.delete(keyValue)
-        })
-    }
-
-    const length = async () => {
-        const transaction = await getTransaction("readonly")
-        return await transactionAction<number>(transaction, () => {
-            const objectStore = transaction.objectStore(store)
-            return objectStore.count()
-        })
-    }
-
-    const clear = async () => {
-        const transaction = await getTransaction("readwrite")
-        return await transactionAction<void>(transaction, () => {
-            const objectStore = transaction.objectStore(store)
-            return objectStore.clear()
-        })
-    }
-
-    const keys = async <K extends IDBValidKey>() => {
-        const transaction = await getTransaction("readonly")
-        return await transactionAction<K[]>(transaction, () => {
-            const objectStore = transaction.objectStore(store)
-            return objectStore.getAllKeys()
-        })
-    }
-
-    const values = async () => {
-        const transaction = await getTransaction("readonly")
-        return await transactionAction<T[]>(transaction, () => {
-            const objectStore = transaction.objectStore(store)
-            return objectStore.getAll()
+            return callback(objectStore)
         })
     }
 
     return {
-        setItem,
-        getItem,
-        removeItem,
-        length,
-        clear,
-        keys,
-        values
+        setItem: (value, keyValue) => {
+            return makeTransactionAction("readwrite", (objectStore) => {
+                return objectStore.put(value, keyValue)
+            })
+        },
+        getItem: (keyValue) => {
+            return makeTransactionAction("readonly", (objectStore) => {
+                return objectStore.get(keyValue)
+            })
+        },
+        removeItem: (keyValue) => {
+            return makeTransactionAction("readwrite", (objectStore) => {
+                return objectStore.delete(keyValue)
+            })
+        },
+        length: () => {
+            return makeTransactionAction("readonly", (objectStore) => {
+                return objectStore.count()
+            })
+        },
+        clear: () => {
+            return makeTransactionAction("readwrite", (objectStore) => {
+                return objectStore.clear()
+            })
+        },
+        keys: () => {
+            return makeTransactionAction("readonly", (objectStore) => {
+                return objectStore.getAllKeys()
+            })
+        },
+        values: () => {
+            return makeTransactionAction("readonly", (objectStore) => {
+                return objectStore.getAll()
+            })
+        }
     } as LDBStorage<T>
 }
