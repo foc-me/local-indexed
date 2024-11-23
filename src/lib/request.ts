@@ -1,31 +1,22 @@
 /**
- * A object with result but is not Event
+ * request action callback result
  */
-export type IDBRequestLike<T = any> = {
-    /**
-     * result
-     */
-    result: T
-}
-
-export type IDBRequestActionResult = IDBRequest | IDBRequestLike | void
+export type IDBActionRequest<T = any> = IDBRequest<T> | { result: T } | void
 
 /**
- * objectStore or index request result
+ * IDBRequest action
  * 
- * if the return value is IDBRequest resolve its result in success event callback
+ * the action callback could return a IDBRequest or something like it (object with result attribute) if needed
  * 
- * otherwise resolve the result directly
- * 
- * @param action request action
- * @returns request result
+ * @param callback action callback
+ * @returns void or the result return by action callback
  */
 export function requestAction<T = any>(
-    action: () => IDBRequestActionResult | Promise<IDBRequestActionResult>
+    callback: () => IDBActionRequest | Promise<IDBActionRequest>
 ) {
     return new Promise<T>(async (resolve, reject) => {
         try {
-            const call = action()
+            const call = callback()
             const request = call instanceof Promise ? await call : call
             if (request instanceof IDBRequest) {
                 request.addEventListener("success", () => {

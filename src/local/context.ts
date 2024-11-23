@@ -21,12 +21,12 @@ export interface LDBContext {
      * 
      * @param store store name
      * @param mode transaction mode
-     * @param options transaction options
+     * @param option transaction option
      */
     getTransaction(
         store: string | string[],
         mode?: IDBTransactionMode,
-        options?: IDBTransactionOptions
+        option?: IDBTransactionOptions
     ): Promise<IDBTransaction>
 }
 
@@ -35,10 +35,10 @@ export function makeContext(database: string, indexedDB?: IDBFactory, transactio
         database,
         indexedDB,
         transaction,
-        getTransaction: async (store, mode?, options?) => {
+        getTransaction: async (store, mode?, option?) => {
             const db = await getDatabase(database, indexedDB)
             try {
-                return db.transaction(store, mode, options)
+                return db.transaction(store, mode, option)
             } catch (error) {
                 db.close()
                 throw error
