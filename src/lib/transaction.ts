@@ -35,8 +35,8 @@ export function transactionAction<T = any>(
             const call = callback()
             const request = call instanceof Promise ? await call : call
             transaction.addEventListener("complete", () => {
-                resolve((request ? request.result : undefined) as T)
                 close()
+                resolve((request ? request.result : undefined) as T)
             })
             transaction.addEventListener("abort", () => {
                 close()

@@ -1,4 +1,3 @@
-import { getDatabase } from "../lib/database"
 import { transactionAction } from "../lib/transaction"
 import { type LDBContext } from "./context"
 
@@ -12,14 +11,13 @@ export async function transaction(
     callback: () => void,
     context: LDBContext
 ) {
-    const { database } = context
-    const db = await getDatabase(database)
-    const stores = [...db.objectStoreNames]
-    const transaction = db.transaction(stores, "readwrite")
+    const database = await context.makeDatabase()
+    const stores = [...database.objectStoreNames]
+    const transaction = database.transaction(stores, "readwrite")
+    context.setTransaction(transaction)
     await transactionAction(transaction, () => {
-        context.transaction = transaction
         return callback()
     }).finally(() => {
-        context.transaction = undefined
+        context.setTransaction()
     })
 }

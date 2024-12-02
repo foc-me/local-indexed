@@ -55,7 +55,13 @@ interface LDBIndexed {
      * @param callback transaction callback
      */
     transaction(callback: () => void | Promise<void>): Promise<void>
+    /**
+     * abort transaction
+     */
     abort(): void
+    /**
+     * close database
+     */
     close(): void
 }
 
@@ -124,14 +130,10 @@ function localIndexed(database: string, indexedDB?: IDBFactory) {
         collection: (store) => collection(store, context),
         transaction: (callback) => transaction(callback, context),
         abort: () => {
-            if (context.transaction) {
-                context.transaction.abort()
-            }
+            context.abort()
         },
         close: () => {
-            if (context.transaction) {
-                context.transaction.db.close()
-            }
+            context.close()
         }
     } as LDBIndexed
 }

@@ -21,12 +21,11 @@ export async function upgrade(
     callback: (event: LDBUpgradeEvent) => void,
     context: LDBContext
 ) {
-    const { database } = context
-    await upgradeAction(database, version, (event) => {
+    await upgradeAction(context.database, version, (event) => {
         const { transaction, oldVersion, newVersion } = event
-        context.transaction = transaction
+        context.setTransaction(transaction)
         return callback({ oldVersion, newVersion })
     }, false, context.indexedDB).finally(() => {
-        context.transaction = undefined
+        context.setTransaction()
     })
 }

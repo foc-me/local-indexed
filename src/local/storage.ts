@@ -46,17 +46,25 @@ export interface LDBStorage<T extends object> {
 }
 
 export function storage<T extends object>(store: string, context: LDBContext) {
+    /**
+     * make transaction action
+     * 
+     * @param mode transaction mode
+     * @param callback action callback
+     * @param option transaction option
+     * @returns action
+     */
     const makeTransactionAction = async <K>(
         mode: IDBTransactionMode,
         callback: (objectStore: IDBObjectStore) => IDBActionRequest | Promise<IDBActionRequest>,
         option?: IDBTransactionOptions
     ) => {
-        const { database, indexedDB } = context
-        const db = await getDatabase(database, indexedDB)
-        const transaction = db.transaction(store, mode, option)
+        const transaction = await context.makeTransaction(store, mode, option)
         return transactionAction<K>(transaction, () => {
             const objectStore = transaction.objectStore(store)
             return callback(objectStore)
+        }).finally(() => {
+            context.setTransaction()
         })
     }
 
