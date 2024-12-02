@@ -222,19 +222,21 @@ export function collection<T extends object>(store: string, context: LDBContext)
         mode: IDBTransactionMode,
         callback: (objectStore: IDBObjectStore) => IDBActionRequest | Promise<IDBActionRequest>
     ) => {
-        const { transaction, getTransaction } = context
-        if (transaction) {
-            const objectStore = transaction.objectStore(store)
+        const { getTransaction, makeTransaction } = context
+        const current = getTransaction()
+        if (current) {
+            const objectStore = current.objectStore(store)
             return requestAction<T>(() => {
                 return callback(objectStore)
             })
-        } else {
-            const transaction = await getTransaction(store, mode)
-            return transactionAction<T>(transaction, () => {
-                const objectStore = transaction.objectStore(store)
-                return callback(objectStore)
-            })
         }
+        const transaction = await makeTransaction(store, mode)
+        return transactionAction<T>(transaction, () => {
+            const objectStore = transaction.objectStore(store)
+            return callback(objectStore)
+        }).finally(() => {
+            context.setTransaction()
+        })
     }
 
     return {

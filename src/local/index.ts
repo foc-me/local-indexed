@@ -3,8 +3,8 @@ import { getDatabases, deleteDatabase, useIndexedDB } from "../lib/indexed"
 import { type LDBCollection, collection } from "./collection"
 import { makeContext } from "./context"
 import { type LDBStorage, storage } from "./storage"
-import { type LDBTransactionContext, transaction } from "./transaction"
-import { type LDBUpgradeContext, upgrade } from "./upgrade"
+import { transaction } from "./transaction"
+import { type LDBUpgradeEvent, upgrade } from "./upgrade"
 
 /**
  * local indexed database
@@ -24,7 +24,7 @@ interface LDBIndexed {
      * @param version upgrade version
      * @param callback upgrade action
      */
-    upgrade(version: number, callback: (context: LDBUpgradeContext) => void | Promise<void>): Promise<void>
+    upgrade(version: number, callback: (event: LDBUpgradeEvent) => void | Promise<void>): Promise<void>
     /**
      * return object stores of current database
      */
@@ -54,7 +54,15 @@ interface LDBIndexed {
      * 
      * @param callback transaction callback
      */
-    transaction(callback: (context: LDBTransactionContext) => void | Promise<void>): Promise<void>
+    transaction(callback: () => void | Promise<void>): Promise<void>
+    /**
+     * abort transaction
+     */
+    abort(): void
+    /**
+     * close database
+     */
+    close(): void
 }
 
 /**
@@ -120,7 +128,13 @@ function localIndexed(database: string, indexedDB?: IDBFactory) {
         exists: (store) => exists(database, store),
         storage: (store) => storage(store, context),
         collection: (store) => collection(store, context),
-        transaction: (callback) => transaction(callback, context)
+        transaction: (callback) => transaction(callback, context),
+        abort: () => {
+            context.abort()
+        },
+        close: () => {
+            context.close()
+        }
     } as LDBIndexed
 }
 

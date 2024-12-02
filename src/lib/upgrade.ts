@@ -36,7 +36,7 @@ export function upgradeAction(
     database: string,
     version: number,
     callback: (event: IDBUpgradeEvent) => void | Promise<void>,
-    rollback: boolean = true,
+    rollback: boolean = false,
     indexedDB?: IDBFactory
 ) {
     return new Promise<void>(async (resolve, reject) => {

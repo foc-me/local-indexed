@@ -26,7 +26,7 @@ export type LDBCollectionOption = {
  * @param transaction transaction
  * @returns result
  */
-export function checkVersionChange(transaction?: IDBTransaction): transaction is IDBTransaction {
+function checkVersionChange(transaction?: IDBTransaction): transaction is IDBTransaction {
     return !!transaction && transaction.mode === "versionchange"
 }
 
@@ -79,7 +79,7 @@ function formatIndexOption(option?: Record<string, LDBIndexOption>) {
  * @returns true if store exists
  */
 export function create(store: string, context: LDBContext, option: LDBCollectionOption) {
-    const { transaction } = context
+    const transaction = context.getTransaction()
     if (checkVersionChange(transaction)) {
         if (containsStore(transaction, store)) {
             throw new ReferenceError(`objectStore '${store}' already exists`)
@@ -104,7 +104,7 @@ export function create(store: string, context: LDBContext, option: LDBCollection
  * @returns true if store not exists
  */
 export function drop(store: string, context: LDBContext) {
-    const { transaction } = context
+    const transaction = context.getTransaction()
     if (checkVersionChange(transaction)) {
         transaction.db.deleteObjectStore(store)
         return !containsStore(transaction, store)
@@ -121,7 +121,7 @@ export function drop(store: string, context: LDBContext) {
  * @returns true if store exists
  */
 export function alter(store: string, context: LDBContext, option: LDBCollectionOption) {
-    const { transaction } = context
+    const transaction = context.getTransaction()
     if (checkVersionChange(transaction)) {
         if (containsStore(transaction, store)) drop(store, context)
         return create(store, context, option)
@@ -150,7 +150,7 @@ function containsIndex(objectStore: IDBObjectStore, index: string) {
  * @returns true if index exists
  */
 export function createIndex(store: string, context: LDBContext, index: string, option: LDBIndexOption) {
-    const { transaction } = context
+    const transaction = context.getTransaction()
     if (checkVersionChange(transaction)) {
         if (!containsStore(transaction, store)) {
             throw new ReferenceError(`objectStore '${store}' does not exist`)
@@ -172,7 +172,7 @@ export function createIndex(store: string, context: LDBContext, index: string, o
  * @returns true if index not exists
  */
 export function dropIndex(store: string, context: LDBContext, index: string) {
-    const { transaction } = context
+    const transaction = context.getTransaction()
     if (checkVersionChange(transaction)) {
         if (!containsStore(transaction, store)) {
             throw new ReferenceError(`objectStore '${store}' does not exist`)

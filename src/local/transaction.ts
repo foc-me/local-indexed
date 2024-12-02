@@ -1,33 +1,5 @@
-import { getDatabase } from "../lib/database"
 import { transactionAction } from "../lib/transaction"
-import { type LDBCollection, collection } from "./collection"
-import { type LDBContext, makeContext } from "./context"
-
-/**
- * transaction context
- */
-export interface LDBTransactionContext {
-    collection<T extends object>(store: string): LDBCollection<T>
-    abort(): void
-}
-
-/**
- * make transaction context
- * 
- * @param transaction transaction
- * @param context database context
- * @returns transaction context
- */
-function makeTransactionContext(transaction: IDBTransaction, context: LDBContext) {
-    const { database, indexedDB } = context
-    const collectionContext = makeContext(database, indexedDB, transaction)
-    return {
-        collection: <T extends object>(store: string) => {
-            return collection<T>(store, collectionContext)
-        },
-        abort: () => { transaction.abort() }
-    } as LDBTransactionContext
-}
+import { type LDBContext } from "./context"
 
 /**
  * indexed transaction
@@ -36,14 +8,16 @@ function makeTransactionContext(transaction: IDBTransaction, context: LDBContext
  * @param context database context
  */
 export async function transaction(
-    callback: (context: LDBTransactionContext) => void,
+    callback: () => void,
     context: LDBContext
 ) {
-    const { database } = context
-    const db = await getDatabase(database)
-    const stores = [...db.objectStoreNames]
-    const transaction = db.transaction(stores, "readwrite")
+    const database = await context.makeDatabase()
+    const stores = [...database.objectStoreNames]
+    const transaction = database.transaction(stores, "readwrite")
+    context.setTransaction(transaction)
     await transactionAction(transaction, () => {
-        return callback(makeTransactionContext(transaction, context))
+        return callback()
+    }).finally(() => {
+        context.setTransaction()
     })
 }

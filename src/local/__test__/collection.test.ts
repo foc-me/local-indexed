@@ -9,8 +9,8 @@ const storeName = "test-store"
 describe("check collection", () => {
     it("check upgrade", async () => {
         const indexed = localIndexed(databaseName)
-        await indexed.upgrade(1, (event) => {
-            const store = event.collection(storeName)
+        await indexed.upgrade(1, () => {
+            const store = indexed.collection(storeName)
             store.create({ keyPath: "id", autoIncrement: false })
         })
         expect(await indexed.version()).toBe(1)
