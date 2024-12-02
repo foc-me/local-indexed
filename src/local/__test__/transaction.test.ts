@@ -15,8 +15,8 @@ describe("check transaction", () => {
     })
     it("check create", async () => {
         const indexed = localIndexed(databaseName)
-        await indexed.upgrade(1, async (context) => {
-            const collection = context.collection(storeName)
+        await indexed.upgrade(1, async () => {
+            const collection = indexed.collection(storeName)
             collection.create({ keyPath: "id", autoIncrement: true })
             const ids: number[] = []
             for (let i = 1; i <= 100; i++) {
@@ -44,25 +44,29 @@ describe("check transaction", () => {
     })
     it("check transaction", async () => {
         const indexed = localIndexed(databaseName)
-        await indexed.transaction(async (context) => {
-            const collection = context.collection<Store>(storeName)
-            const ids = await collection.updateMany<number>((item) => {
-                if (!item.odd) {
-                    const value = item.value * 10
-                    return { id: item.id, value, odd: "odd", re10: value % 10 }
-                }
-            })
-            expect(Array.isArray(ids)).toBe(true)
-            expect(ids.length).toBe(50)
-            ids.forEach((id, index) => {
-                expect(id).toBe(index * 2 + 1)
-            })
-            // test abort
-            // throw new Error("abort")
-            const count = await collection.removeMany((item) => {
-                return item.id > 50
-            })
-            expect(count).toBe(50)
+        await indexed.transaction(async () => {
+            try {
+                const collection = indexed.collection<Store>(storeName)
+                const ids = await collection.updateMany<number>((item) => {
+                    if (!item.odd) {
+                        const value = item.value * 10
+                        return { id: item.id, value, odd: "odd", re10: value % 10 }
+                    }
+                })
+                expect(Array.isArray(ids)).toBe(true)
+                expect(ids.length).toBe(50)
+                ids.forEach((id, index) => {
+                    expect(id).toBe(index * 2 + 1)
+                })
+                // test abort
+                // throw new Error("abort")
+                const count = await collection.removeMany((item) => {
+                    return item.id > 50
+                })
+                expect(count).toBe(50)
+            } catch (error) {
+                indexed.abort()
+            }
         })
         const collection = indexed.collection<Store>(storeName)
         const result = await collection.find()
@@ -76,22 +80,17 @@ describe("check transaction", () => {
             expect(item.odd).toBe("odd")
             expect(item.re10).toBe(re10 === 10 ? 0 : re10)
         }
+        // expect(result.length).toBe(100)
+        // for (let i = 0; i < 100; i++) {
+        //     const item = result[i]
+        //     const value = i + 1
+        //     const re10 = i % 10 + 1
+        //     expect(item.id).toBe(value)
+        //     expect(item.value).toBe(value)
+        //     expect(item.odd).toBe(i % 2 === 0 ? undefined : "odd")
+        //     expect(item.re10).toBe(re10 === 10 ? 0 : re10)
+        // }
     })
-    // it("check abort data", async () => {
-    //     const indexed = localIndexed(databaseName)
-    //     const collection = indexed.collection<Store>(storeName)
-    //     const result = await collection.find()
-    //     expect(result.length).toBe(100)
-    //     for (let i = 0; i < 100; i++) {
-    //         const item = result[i]
-    //         const value = i + 1
-    //         const re10 = i % 10 + 1
-    //         expect(item.id).toBe(value)
-    //         expect(item.value).toBe(value)
-    //         expect(item.odd).toBe(i % 2 === 0 ? undefined : "odd")
-    //         expect(item.re10).toBe(re10 === 10 ? 0 : re10)
-    //     }
-    // })
     it("check delete database", async () => {
         await localIndexed.deleteDatabase(databaseName)
         const indexed = localIndexed(databaseName)

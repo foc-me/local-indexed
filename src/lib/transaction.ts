@@ -24,17 +24,11 @@ export function transactionAction<T = any>(
     callback: () => IDBActionRequest | Promise<IDBActionRequest>,
     option?: { autoClose?: boolean, rollback?: boolean }
 ) {
-    const { autoClose = true, rollback = true } = option || {}
+    const { autoClose = true } = option || {}
     const close = () => {
-        if (autoClose === true) {
+        if (autoClose) {
             transaction.db.close()
         }
-    }
-    const abortAndClose = () => {
-        if (rollback === true) {
-            transaction.abort()
-        }
-        close()
     }
     return new Promise<T>(async (resolve, reject) => {
         try {
@@ -44,12 +38,16 @@ export function transactionAction<T = any>(
                 resolve((request ? request.result : undefined) as T)
                 close()
             })
+            transaction.addEventListener("abort", () => {
+                close()
+                resolve((request ? request.result : undefined) as T)
+            })
             transaction.addEventListener("error", (error) => {
-                abortAndClose()
+                close()
                 reject(error)
             })
         } catch (error) {
-            abortAndClose()
+            close()
             reject(error)
         }
     })
