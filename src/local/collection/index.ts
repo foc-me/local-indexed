@@ -14,7 +14,9 @@ import {
     getIndexes,
     find,
     findOne,
-    findMany
+    findMany,
+    count,
+    countMany
 } from "./action"
 import {
     type LDBIndexOption,
@@ -25,6 +27,7 @@ import {
     createIndex,
     dropIndex
 } from "./upgrade"
+import { type LDBIndexCollection, indexCollection } from "./indexCollection"
 
 /**
  * collection of indexeddb database
@@ -156,6 +159,12 @@ export interface LDBCollection<T extends object> {
      */
     getIndexes(): Promise<IDBIndexInfo[]>
     /**
+     * get index collection
+     * 
+     * @param name index name
+     */
+    index(name: string): LDBIndexCollection<T>
+    /**
      * get value by key
      * 
      * @param value key value
@@ -166,7 +175,7 @@ export interface LDBCollection<T extends object> {
      * 
      * @param value key range
      */
-    find(value: IDBKeyRange): Promise<T[]>
+    find(range: IDBKeyRange): Promise<T[]>
     /**
      * find values by filter
      * 
@@ -201,6 +210,37 @@ export interface LDBCollection<T extends object> {
             direction?: IDBCursorDirection
         }
     ): Promise<T[]>
+    /**
+     * count value by key
+     * 
+     * @param value key value
+     */
+    count(value: IDBValidKey): Promise<number>
+    /**
+     * count values by key range
+     * 
+     * @param value key range
+     */
+    count(range: IDBKeyRange): Promise<number>
+    /**
+     * count values by filter
+     * 
+     * @param filter value filter
+     */
+    count(filter?: (item: T) => boolean): Promise<number>
+    /**
+     * count values with cursor
+     * 
+     * @param filter cursor filter
+     * @param option cursor option
+     */
+    countMany(
+        filter: (item: T) => boolean,
+        option?: {
+            query?: IDBValidKey | IDBKeyRange,
+            direction?: IDBCursorDirection
+        }
+    ): Promise<number>
 }
 
 /**
@@ -302,19 +342,32 @@ export function collection<T extends object>(context: LDBContext, store: string)
                 return getIndexes(objectStore)
             })
         },
+        index: (name) => {
+            return indexCollection(context, store, name)
+        },
         find: (filter) => {
             return makeTransactionAction("readonly", (objectStore) => {
-                return find<T>(objectStore, filter)
+                return find(objectStore, filter)
             })
         },
         findOne: (filter, option) => {
             return makeTransactionAction("readonly", (objectStore) => {
-                return findOne<T>(objectStore, filter, option)
+                return findOne(objectStore, filter, option)
             })
         },
         findMany: (filter, option) => {
             return makeTransactionAction("readonly", (objectStore) => {
-                return findMany<T>(objectStore, filter, option)
+                return findMany(objectStore, filter, option)
+            })
+        },
+        count: (filter) => {
+            return makeTransactionAction("readonly", (objectStore) => {
+                return count(objectStore, filter)
+            })
+        },
+        countMany: (filter, option) => {
+            return makeTransactionAction("readonly", (objectStore) => {
+                return countMany(objectStore, filter, option)
             })
         }
     } as LDBCollection<T>

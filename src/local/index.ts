@@ -1,7 +1,7 @@
 import { getDatabase } from "../lib/database"
 import { getDatabases, deleteDatabase, useIndexedDB } from "../lib/indexed"
 import { type LDBCollection, collection } from "./collection"
-import { LDBContext, makeContext } from "./context"
+import { type LDBContext, makeContext } from "./context"
 import { type LDBStorage, storage } from "./storage"
 import { transaction } from "./transaction"
 import { type LDBUpgradeEvent, upgrade } from "./upgrade"

@@ -59,7 +59,7 @@ export function update(objectStore: IDBObjectStore, value: any) {
  * @returns affected ids
  */
 export async function updateOne<T extends object, K extends IDBValidKey>(
-    objectStore: IDBObjectStore,
+    objectStore: IDBObjectStore | IDBIndex,
     filter: (item: T) => any,
     option?: {
         query?: IDBValidKey | IDBKeyRange,
@@ -89,7 +89,7 @@ export async function updateOne<T extends object, K extends IDBValidKey>(
  * @returns affected ids
  */
 export async function updateMany<T extends object, K extends IDBValidKey>(
-    objectStore: IDBObjectStore,
+    objectStore: IDBObjectStore | IDBIndex,
     filter: (item: T) => any,
     option?: {
         query?: IDBValidKey | IDBKeyRange,
@@ -133,7 +133,7 @@ export function remove(objectStore: IDBObjectStore, value: IDBValidKey | IDBKeyR
  * @returns rows affected number
  */
 export async function removeOne<T extends object>(
-    objectStore: IDBObjectStore,
+    objectStore: IDBObjectStore | IDBIndex,
     filter: (item: T) => boolean,
     option?: {
         query?: IDBValidKey | IDBKeyRange,
@@ -164,7 +164,7 @@ export async function removeOne<T extends object>(
  * @returns rows affected number
  */
 export async function removeMany<T extends object>(
-    objectStore: IDBObjectStore,
+    objectStore: IDBObjectStore | IDBIndex,
     filter: (item: T) => boolean,
     option?: {
         query?: IDBValidKey | IDBKeyRange,
@@ -209,7 +209,7 @@ export function getIndexes(objectStore: IDBObjectStore) {
  * @returns get request
  */
 export async function find<T extends object>(
-    objectStore: IDBObjectStore,
+    objectStore: IDBObjectStore | IDBIndex,
     filter?: IDBValidKey | IDBKeyRange | ((item: T) => boolean)
 ) {
     if (filter === undefined || typeof filter === "function") {
@@ -232,7 +232,7 @@ export async function find<T extends object>(
  * @returns value
  */
 export async function findOne<T extends object>(
-    objectStore: IDBObjectStore,
+    objectStore: IDBObjectStore | IDBIndex,
     filter: (item: T) => boolean,
     option?: {
         query?: IDBValidKey | IDBKeyRange,
@@ -258,7 +258,7 @@ export async function findOne<T extends object>(
  * @returns values
  */
 export async function findMany<T extends object>(
-    objectStore: IDBObjectStore,
+    objectStore: IDBObjectStore | IDBIndex,
     filter: (item: T) => boolean,
     option?: {
         query?: IDBValidKey | IDBKeyRange,
@@ -277,8 +277,15 @@ export async function findMany<T extends object>(
     return { result } as IDBActionRequest<T[]>
 }
 
+/**
+ * get values count
+ * 
+ * @param objectStore object store
+ * @param filter values filter
+ * @returns counts
+ */
 export async function count<T>(
-    objectStore: IDBObjectStore,
+    objectStore: IDBObjectStore | IDBIndex,
     filter?: IDBValidKey | IDBKeyRange | ((item: T) => boolean)
 ) {
     if (filter === undefined || typeof filter === "function") {
@@ -290,8 +297,16 @@ export async function count<T>(
     return objectStore.count(filter) as IDBRequest<number>
 }
 
+/**
+ * get values count with cursor
+ * 
+ * @param objectStore object store
+ * @param filter sursor filter
+ * @param option sursor option
+ * @returns counts
+ */
 export async function countMany<T>(
-    objectStore: IDBObjectStore,
+    objectStore: IDBObjectStore | IDBIndex,
     filter: (item: T) => boolean,
     option?: {
         query?: IDBValidKey | IDBKeyRange,

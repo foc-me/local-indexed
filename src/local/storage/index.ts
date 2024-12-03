@@ -1,6 +1,7 @@
-import { type IDBActionRequest } from "../lib/request"
-import { transactionAction } from "../lib/transaction"
-import { type LDBContext } from "./context"
+import { type IDBActionRequest } from "../../lib/request"
+import { transactionAction } from "../../lib/transaction"
+import { type LDBContext } from "../context"
+import { type LDBIndexStorage, indexStrage } from "./indexStorage"
 
 /**
  * storage for database object store
@@ -10,24 +11,25 @@ export interface LDBStorage<T extends object> {
      * set value to the store
      * 
      * @param value stored value
+     * @param key key path value
      */
-    setItem<K extends IDBValidKey>(value: any, keyValue?: K): Promise<K>
+    setItem<K extends IDBValidKey>(value: any, key?: K): Promise<K>
     /**
      * get value from the store
      * 
-     * @param keyValue key path value of the store
+     * @param query key path value of the store
      */
-    getItem(keyValue: IDBValidKey | IDBKeyRange): Promise<T | undefined>
+    getItem(query: IDBValidKey | IDBKeyRange): Promise<T | undefined>
     /**
      * remove value from the store
      * 
-     * @param keyValue key path value of the store
+     * @param query key path value or key range
      */
-    removeItem(keyValue: IDBValidKey | IDBKeyRange): Promise<void>
+    removeItem(query: IDBValidKey | IDBKeyRange): Promise<void>
     /**
      * count values from the store
      */
-    length(): Promise<number>
+    length(query?: IDBValidKey | IDBKeyRange): Promise<number>
     /**
      * clear the store
      * 
@@ -37,11 +39,12 @@ export interface LDBStorage<T extends object> {
     /**
      * get all keys
      */
-    keys<K extends IDBValidKey>(): Promise<K[]>
+    keys<K extends IDBValidKey>(query?: IDBValidKey | IDBKeyRange | null, count?: number): Promise<K[]>
     /**
      * get all values
      */
-    values(): Promise<T[]>
+    values(query?: IDBValidKey | IDBKeyRange | null, count?: number): Promise<T[]>
+    index(index: string): LDBIndexStorage<T>
 }
 
 /**
@@ -75,24 +78,24 @@ export function storage<T extends object>(context: LDBContext, store: string) {
     }
 
     return {
-        setItem: (value, keyValue) => {
+        setItem: (value, key) => {
             return makeTransactionAction("readwrite", (objectStore) => {
-                return objectStore.put(value, keyValue)
+                return objectStore.put(value, key)
             })
         },
-        getItem: (keyValue) => {
+        getItem: (query) => {
             return makeTransactionAction("readonly", (objectStore) => {
-                return objectStore.get(keyValue)
+                return objectStore.get(query)
             })
         },
-        removeItem: (keyValue) => {
+        removeItem: (query) => {
             return makeTransactionAction("readwrite", (objectStore) => {
-                return objectStore.delete(keyValue)
+                return objectStore.delete(query)
             })
         },
-        length: () => {
+        length: (query) => {
             return makeTransactionAction("readonly", (objectStore) => {
-                return objectStore.count()
+                return objectStore.count(query)
             })
         },
         clear: () => {
@@ -100,15 +103,18 @@ export function storage<T extends object>(context: LDBContext, store: string) {
                 return objectStore.clear()
             })
         },
-        keys: () => {
+        keys: (query, count) => {
             return makeTransactionAction("readonly", (objectStore) => {
-                return objectStore.getAllKeys()
+                return objectStore.getAllKeys(query, count)
             })
         },
-        values: () => {
+        values: (query, count) => {
             return makeTransactionAction("readonly", (objectStore) => {
-                return objectStore.getAll()
+                return objectStore.getAll(query, count)
             })
+        },
+        index: (index: string) => {
+            return indexStrage(context, store, index)
         }
     } as LDBStorage<T>
 }
