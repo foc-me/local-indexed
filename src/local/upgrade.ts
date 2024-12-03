@@ -17,10 +17,11 @@ export interface LDBUpgradeEvent {
  * @param context database context
  */
 export async function upgrade(
+    context: LDBContext,
     version: number,
-    callback: (event: LDBUpgradeEvent) => void,
-    context: LDBContext
+    callback: (event: LDBUpgradeEvent) => void | Promise<void>
 ) {
+    console.log(version, callback)
     await upgradeAction(context.database, version, (event) => {
         const { transaction, oldVersion, newVersion } = event
         context.setTransaction(transaction)

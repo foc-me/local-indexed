@@ -25,7 +25,7 @@ describe("check transaction action", () => {
             })
             expect(transaction.db.objectStoreNames.length).toBe(3)
             // try abort upgrade
-            // throw new Error("~~~~~~~~~~~")
+            // throw new Error("error")
         })
         expect((await getDatabases()).length).toBe(1)
     })

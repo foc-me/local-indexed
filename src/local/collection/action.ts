@@ -276,3 +276,36 @@ export async function findMany<T extends object>(
     })
     return { result } as IDBActionRequest<T[]>
 }
+
+export async function count<T>(
+    objectStore: IDBObjectStore,
+    filter?: IDBValidKey | IDBKeyRange | ((item: T) => boolean)
+) {
+    if (filter === undefined || typeof filter === "function") {
+        const results = await requestAction(() => {
+            return objectStore.getAll()
+        })
+        return { result: (filter ? results.filter(filter) : results).length }  as IDBActionRequest<number>
+    }
+    return objectStore.count(filter) as IDBRequest<number>
+}
+
+export async function countMany<T>(
+    objectStore: IDBObjectStore,
+    filter: (item: T) => boolean,
+    option?: {
+        query?: IDBValidKey | IDBKeyRange,
+        direction?: IDBCursorDirection
+    }
+) {
+    const { query, direction } = option || {}
+    const request = objectStore.openCursor(query, direction)
+    const result = { result: 0 }
+    await cursorAction(request, (cursor) => {
+        if (filter(cursor.value) === true) {
+            result.result++
+        }
+        cursor.continue()
+    })
+    return result as IDBActionRequest<number>
+}

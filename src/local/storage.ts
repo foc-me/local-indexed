@@ -1,4 +1,3 @@
-import { getDatabase } from "../lib/database"
 import { type IDBActionRequest } from "../lib/request"
 import { transactionAction } from "../lib/transaction"
 import { type LDBContext } from "./context"
@@ -45,7 +44,14 @@ export interface LDBStorage<T extends object> {
     values(): Promise<T[]>
 }
 
-export function storage<T extends object>(store: string, context: LDBContext) {
+/**
+ * indexed storage
+ * 
+ * @param context database context
+ * @param store store name
+ * @returns storage
+ */
+export function storage<T extends object>(context: LDBContext, store: string) {
     /**
      * make transaction action
      * 

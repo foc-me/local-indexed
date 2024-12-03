@@ -1,7 +1,7 @@
 import { getDatabase } from "../lib/database"
 import { getDatabases, deleteDatabase, useIndexedDB } from "../lib/indexed"
 import { type LDBCollection, collection } from "./collection"
-import { makeContext } from "./context"
+import { LDBContext, makeContext } from "./context"
 import { type LDBStorage, storage } from "./storage"
 import { transaction } from "./transaction"
 import { type LDBUpgradeEvent, upgrade } from "./upgrade"
@@ -18,6 +18,12 @@ interface LDBIndexed {
      * database version
      */
     version(): Promise<number>
+    /**
+     * upgrade database
+     * 
+     * @param callback upgrade action
+     */
+    upgrade(callback: (event: LDBUpgradeEvent) => void | Promise<void>): Promise<void>
     /**
      * upgrade database
      * 
@@ -84,7 +90,7 @@ async function getDatabaseInfo(database: string) {
  */
 async function getVersion(database: string) {
     const target = await getDatabaseInfo(database)
-    return target ? target.version : 0
+    return target && target.version ? target.version : 0
 }
 
 /**
@@ -112,6 +118,29 @@ async function exists(database: string, store: string) {
 }
 
 /**
+ * upgrade wrapper use to format upgrade parameters
+ * 
+ * @param context database context
+ * @param version upgrade version or upgrade callback
+ * @param callback upgrade callback
+ * @returns void or primise void
+ */
+async function upgradeWrapper(
+    context: LDBContext,
+    version: number | ((event: LDBUpgradeEvent) => void | Promise<void>),
+    callback?: (event: LDBUpgradeEvent) => void | Promise<void>
+) {
+    if (typeof version === "function") {
+        callback = version
+        version = await getVersion(context.database) + 1
+    }
+    if (!callback) {
+        throw new ReferenceError("callback is not a function")
+    }
+    return upgrade(context, version, callback)
+}
+
+/**
  * get indexed
  * 
  * @param database database name
@@ -123,18 +152,14 @@ function localIndexed(database: string, indexedDB?: IDBFactory) {
     return {
         name: database,
         version: () => getVersion(database),
-        upgrade: (version, callback) => upgrade(version, callback, context),
+        upgrade: (version, callback) => upgradeWrapper(context, version, callback),
         stores: () => stores(database),
         exists: (store) => exists(database, store),
-        storage: (store) => storage(store, context),
-        collection: (store) => collection(store, context),
-        transaction: (callback) => transaction(callback, context),
-        abort: () => {
-            context.abort()
-        },
-        close: () => {
-            context.close()
-        }
+        storage: (store) => storage(context, store),
+        collection: (store) => collection(context, store),
+        transaction: (callback) => transaction(context, callback),
+        abort: () => { context.abort() },
+        close: () => { context.close() }
     } as LDBIndexed
 }
 

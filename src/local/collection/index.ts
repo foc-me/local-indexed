@@ -206,11 +206,11 @@ export interface LDBCollection<T extends object> {
 /**
  * create collection
  * 
- * @param store store name
  * @param context indexed context
+ * @param store store name
  * @returns collection
  */
-export function collection<T extends object>(store: string, context: LDBContext) {
+export function collection<T extends object>(context: LDBContext, store: string) {
     /**
      * get current objectStore from context
      * 

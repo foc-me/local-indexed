@@ -13,7 +13,7 @@ describe("check indexed.upgrade", () => {
     })
     it("check create", async () => {
         const indexed = localIndexed(databaseName)
-        await indexed.upgrade(1, (event) => {
+        await indexed.upgrade((event) => {
             expect(event.oldVersion).toBe(0)
             expect(event.newVersion).toBe(1)
             const collection = indexed.collection(storeName)
@@ -30,7 +30,7 @@ describe("check indexed.upgrade", () => {
     })
     it("check createIndex", async () => {
         const indexed = localIndexed(databaseName)
-        await indexed.upgrade(2, () => {
+        await indexed.upgrade(() => {
             const collection = indexed.collection(storeName)
             collection.createIndex("odd", { unique: false })
             collection.createIndex("re10", { unique: false })
@@ -52,7 +52,7 @@ describe("check indexed.upgrade", () => {
     })
     it("check alter", async () => {
         const indexed = localIndexed(databaseName)
-        await indexed.upgrade(3, () => {
+        await indexed.upgrade(() => {
             const collection = indexed.collection(storeName)
             collection.alter({
                 keyPath: "id",
@@ -80,7 +80,7 @@ describe("check indexed.upgrade", () => {
     })
     it("check deleteIndex", async () => {
         const indexed = localIndexed(databaseName)
-        await indexed.upgrade(4, async () => {
+        await indexed.upgrade(async () => {
             const collection = indexed.collection(storeName)
             const indexes = await collection.getIndexes()
             for (let i = 0; i < 2; i++) {
@@ -98,7 +98,7 @@ describe("check indexed.upgrade", () => {
     })
     it("check drop", async () => {
         const indexed = localIndexed(databaseName)
-        await indexed.upgrade(5, async () => {
+        await indexed.upgrade(async () => {
             const collection = indexed.collection(storeName)
             collection.drop()
         })
