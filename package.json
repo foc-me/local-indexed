@@ -13,6 +13,7 @@
     "scripts": {
         "build": "rimraf ./dist && tsc && rollup -c",
         "test": "jest",
+        "test:coverage": "jest --coverage",
         "test:watch": "jest --watch --no-coverage"
     },
     "devDependencies": {

@@ -7,7 +7,7 @@ module.exports = {
     input: "./src/index.ts",
     output: [
         { dir: "./dist/esm", format: "esm" },
-        { dir: "./dist/dist", format: "umd", name: "local-indexed" }
+        { dir: "./dist/dist", format: "umd", name: "localIndexed" }
     ],
     plugins: [
         typescript({

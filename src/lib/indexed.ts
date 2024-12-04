@@ -58,8 +58,8 @@ export function deleteDatabase(database: string, indexedDB?: IDBFactory): Promis
             request.addEventListener("error", error => {
                 reject(error)
             })
-            request.addEventListener("abort", () => {
-                reject(new Error("database is using"))
+            request.addEventListener("blocked", () => {
+                reject(new Error("delete database blocked: some connections not closed"))
             })
         } catch (error) {
             reject(error)

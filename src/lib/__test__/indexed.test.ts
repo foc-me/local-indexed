@@ -1,11 +1,19 @@
-import "fake-indexeddb/auto"
-import { getDatabases, deleteDatabase } from "../indexed"
+import { indexedDB } from "fake-indexeddb"
+import { useIndexedDB, getIndexedDB, getDatabases, deleteDatabase } from "../indexed"
 import { getDatabase } from "../database"
 
 const databaseName = "local-indexed"
 
 describe("check indexed", () => {
-    it("check empty indexed", async () => {
+    it("check no indexeddb", async () => {
+        expect(() => getIndexedDB()).toThrow(ReferenceError)
+        await expect(getDatabase(databaseName)).rejects.toThrow(ReferenceError)
+        await expect(deleteDatabase(databaseName)).rejects.toThrow(ReferenceError)
+    })
+    it("check indexeddb", async () => {
+        expect(!!indexedDB).toBe(true)
+        useIndexedDB(indexedDB)
+        expect(getIndexedDB()).toBe(indexedDB)
         expect((await getDatabases()).length).toBe(0)
     })
     it("check create database", async () => {
@@ -38,6 +46,10 @@ describe("check indexed", () => {
     it("check delete databases", async () => {
         const databases = await getDatabases()
         expect(databases.length).toBe(11)
+        const indexed = await getDatabase(databaseName)
+        await expect(() => deleteDatabase(databaseName)).rejects.toThrow(Error)
+        indexed.close()
+
         await deleteDatabase(databaseName)
         for (let i = 1; i <= 10; i++) {
             const { name } = databases[i]
