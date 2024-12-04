@@ -40,11 +40,9 @@ export function transactionAction<T = any>(
             })
             transaction.addEventListener("abort", () => {
                 close()
-                resolve((request ? request.result : undefined) as T)
-            })
-            transaction.addEventListener("error", (error) => {
-                close()
-                reject(error)
+                if (transaction.error) {
+                    reject(new Error(transaction.error.message))
+                } else resolve((request ? request.result : undefined) as T)
             })
         } catch (error) {
             close()

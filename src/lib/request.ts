@@ -22,8 +22,8 @@ export function requestAction<T = any>(
                 request.addEventListener("success", () => {
                     resolve(request.result as T)
                 })
-                request.addEventListener("error", (error) => {
-                    reject(error)
+                request.addEventListener("error", () => {
+                    reject(new Error(request.error?.message))
                 })
             } else {
                 resolve((request ? request.result : undefined) as T)
