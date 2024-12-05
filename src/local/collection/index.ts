@@ -64,7 +64,7 @@ export interface LDBCollection<T extends object> {
      * @param index index name
      * @param option create store index option
      */
-    createIndex(index: string, option: LDBIndexOption): boolean
+    createIndex(index: string, option?: LDBIndexOption): boolean
     /**
      * delete store index
      * 

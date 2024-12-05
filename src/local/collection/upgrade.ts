@@ -149,14 +149,14 @@ function containsIndex(objectStore: IDBObjectStore, index: string) {
  * @param option create index option
  * @returns true if index exists
  */
-export function createIndex(store: string, context: LDBContext, index: string, option: LDBIndexOption) {
+export function createIndex(store: string, context: LDBContext, index: string, option?: LDBIndexOption) {
     const transaction = context.getTransaction()
     if (checkVersionChange(transaction)) {
         if (!containsStore(transaction, store)) {
             throw new ReferenceError(`objectStore '${store}' does not exist`)
         }
         const objectStore = transaction.objectStore(store)
-        const { keyPath, unique, multiEntry } = option
+        const { keyPath, unique, multiEntry } = option || {}
         objectStore.createIndex(index, keyPath || index, { unique, multiEntry })
         return containsIndex(objectStore, index)
     }

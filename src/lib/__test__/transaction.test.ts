@@ -11,6 +11,9 @@ const databaseName = "local-indexed"
 const storeName = "test-store"
 
 describe("check transaction action", () => {
+    it("check empty indexed", async () => {
+        expect((await getDatabases()).length).toBe(0)
+    })
     it("check create", async () => {
         await upgradeAction(databaseName, 1, async (event) => {
             const { transaction } = event
@@ -360,6 +363,44 @@ describe("check transaction action", () => {
                     return re10.getKey(i)
                 })).toBe(i === 0 ? 10 : i)
             }
+        })
+    })
+    it("check delete", async () => {
+        const database = await getDatabase(databaseName)
+        const transaction = database.transaction(storeName, "readwrite")
+        await transactionAction(transaction, async () => {
+            const objectStore = transaction.objectStore(storeName)
+            for (let i = 0; i < 20; i++) {
+                expect(await requestAction<number[]>(() => {
+                    return objectStore.delete(i + 1)
+                })).toBe(undefined)
+            }
+            expect(await requestAction(() => {
+                return objectStore.count()
+            })).toBe(80)
+            for (let i = 0; i < 3; i++) {
+                const start = (i + 2) * 10 + 1
+                const range = IDBKeyRange.bound(start, start + 9)
+                expect(await requestAction<number[]>(() => {
+                    return objectStore.delete(range)
+                })).toBe(undefined)
+            }
+            expect(await requestAction(() => {
+                return objectStore.count()
+            })).toBe(50)
+        })
+    })
+    it("check clear", async () => {
+        const database = await getDatabase(databaseName)
+        const transaction = database.transaction(storeName, "readwrite")
+        await transactionAction(transaction, async () => {
+            const objectStore = transaction.objectStore(storeName)
+            expect(await requestAction<number[]>(() => {
+                return objectStore.clear()
+            })).toBe(undefined)
+            expect(await requestAction(() => {
+                return objectStore.count()
+            })).toBe(0)
         })
     })
     it("check delete database", async () => {

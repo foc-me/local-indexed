@@ -134,7 +134,7 @@ async function upgradeWrapper(
         callback = version
         version = await getVersion(context.database) + 1
     }
-    if (!callback) {
+    if (typeof callback !== "function") {
         throw new ReferenceError("callback is not a function")
     }
     return upgrade(context, version, callback)
@@ -159,7 +159,7 @@ function localIndexed(database: string, indexedDB?: IDBFactory) {
         collection: (store) => collection(context, store),
         transaction: (callback) => transaction(context, callback),
         abort: () => { context.abort() },
-        close: () => { context.close() }
+        close: () => { context.setTransaction() }
     } as LDBIndexed
 }
 

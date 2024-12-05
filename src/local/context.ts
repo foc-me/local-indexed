@@ -42,10 +42,6 @@ export interface LDBContext {
      * abort the transaction
      */
     abort(): void
-    /**
-     * close database connection
-     */
-    close(): void
 }
 
 export function makeContext(database: string, indexedDB?: IDBFactory, transaction?: IDBTransaction) {
@@ -79,10 +75,9 @@ export function makeContext(database: string, indexedDB?: IDBFactory, transactio
         abort: () => {
             if (current.value) {
                 current.value.abort()
+            } else {
+                throw new Error("abort() requires transaction or upgrade")
             }
-        },
-        close: () => {
-            setTransaction()
         }
     } as LDBContext
 }

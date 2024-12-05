@@ -14,15 +14,13 @@ describe("check indexed.upgrade with collection", () => {
     })
     it("check create and collection insertOne", async () => {
         const indexed = localIndexed(databaseName)
-        await indexed.upgrade(1, async () => {
+        await indexed.upgrade(async () => {
             const collection = indexed.collection<Store>(storeName)
             collection.create({ keyPath: "id", autoIncrement: true })
             for (let i = 1; i <= 100; i++) {
                 const odd = i % 2 === 0 ? { odd: "odd" } : {}
                 const id = await collection.insertOne(Object.assign({ value: i, re10: i % 10 }, odd))
                 expect(id).toBe(i)
-                // check abort upgrade
-                // if (i === 77) throw new Error("77")
             }
         })
         expect(await indexed.version()).toBe(1)
@@ -45,7 +43,7 @@ describe("check indexed.upgrade with collection", () => {
     })
     it("check upgarde and collection find", async () => {
         const indexed = localIndexed(databaseName)
-        await indexed.upgrade(2, async () => {
+        await indexed.upgrade(async () => {
             const collection = indexed.collection<Store>(storeName)
             const items = await collection.find()
             expect(items.length).toBe(100)
@@ -90,7 +88,7 @@ describe("check indexed.upgrade with collection", () => {
     })
     it("check upgrade and insertMany", async () => {
         const indexed = localIndexed(databaseName)
-        await indexed.upgrade(3, async () => {
+        await indexed.upgrade(async () => {
             const collection = indexed.collection<Store>(storeName)
             const items = await collection.find()
             expect(items.length).toBe(100)
