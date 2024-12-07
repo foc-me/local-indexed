@@ -29,7 +29,7 @@ describe("check transaction", () => {
             })
         })
         const collection = indexed.collection<Store>(storeName)
-        const result = await collection.find()
+        const result = await collection.findMany()
         expect(Array.isArray(result)).toBe(true)
         expect(result.length).toBe(100)
         for (let i = 0; i < 100; i++) {
@@ -69,7 +69,7 @@ describe("check transaction", () => {
             }
         })
         const collection = indexed.collection<Store>(storeName)
-        const result = await collection.find()
+        const result = await collection.findMany()
         expect(result.length).toBe(50)
         for (let i = 0; i < result.length; i++) {
             const item = result[i]

@@ -1,17 +1,10 @@
 import { type IDBActionRequest, requestAction } from "../../lib/request"
 import { transactionAction } from "../../lib/transaction"
 import { LDBContext } from "../context"
-import {
-    updateOne,
-    updateMany,
-    removeOne,
-    removeMany,
-    find,
-    findOne,
-    findMany,
-    count,
-    countMany
-} from "./action"
+import { updateOneCursor, updateManyCursor } from "./update"
+import { removeOneCursor, removeManyCursor } from "./remove"
+import { findOne, findOneCursor, findManyKeyRange, findManyCursor } from "./find"
+import { countMany, countManyCursor } from "./count"
 
 /**
  * index collection of collection
@@ -74,27 +67,7 @@ export interface LDBIndexCollection<T extends object> {
         }
     ): Promise<number>
     /**
-     * get value by key
-     * 
-     * @param value key value
-     */
-    find(value: IDBValidKey): Promise<T | undefined>
-    /**
-     * find values by key range
-     * 
-     * @param value key range
-     */
-    find(range: IDBKeyRange): Promise<T[]>
-    /**
-     * find values by filter
-     * 
-     * @param filter value filter
-     */
-    find(filter?: (item: T) => boolean): Promise<T[]>
-    /**
      * get value with cursor
-     * 
-     * close cursor after first value finded
      * 
      * @param filter cursor filter
      * @param option cursor option
@@ -106,6 +79,12 @@ export interface LDBIndexCollection<T extends object> {
             direction?: IDBCursorDirection
         }
     ): Promise<T | undefined>
+    /**
+     * get value
+     * 
+     * @param value key value
+     */
+    findOne(value: IDBValidKey): Promise<T[]>
     /**
      * get values with cursor
      * 
@@ -120,36 +99,31 @@ export interface LDBIndexCollection<T extends object> {
         }
     ): Promise<T[]>
     /**
-     * count value by key
-     * 
-     * @param value key value
-     */
-    count(value: IDBValidKey): Promise<number>
-    /**
-     * count values by key range
+     * get values
      * 
      * @param value key range
      */
-    count(range: IDBKeyRange): Promise<number>
-    /**
-     * count values by filter
-     * 
-     * @param filter value filter
-     */
-    count(filter?: (item: T) => boolean): Promise<number>
+    findMany(range?: IDBValidKey | IDBKeyRange): Promise<T[]>
     /**
      * count values with cursor
      * 
      * @param filter cursor filter
      * @param option cursor option
      */
-    countMany(
+    count(
         filter: (item: T) => boolean,
         option?: {
             query?: IDBValidKey | IDBKeyRange,
-            direction?: IDBCursorDirection
+            direction?: IDBCursorDirection,
+            curosr?: boolean
         }
     ): Promise<number>
+    /**
+     * count values
+     * 
+     * @param value key value or key range
+     */
+    count(value?: IDBValidKey | IDBKeyRange): Promise<number>
 }
 
 /**
@@ -194,47 +168,40 @@ export function indexCollection<T extends object>(context: LDBContext, store: st
     return {
         updateOne: (filter, option) => {
             return makeTransactionAction("readwrite", (storeIndex) => {
-                return updateOne(storeIndex, filter, option)
+                return updateOneCursor(storeIndex, filter, option)
             })
         },
         updateMany: (filter, option) => {
             return makeTransactionAction("readwrite", (storeIndex) => {
-                return updateMany(storeIndex, filter, option)
+                return updateManyCursor(storeIndex, filter, option)
             })
         },
         removeOne: (filter, option) => {
             return makeTransactionAction("readwrite", (storeIndex) => {
-                return removeOne(storeIndex, filter, option)
+                return removeOneCursor(storeIndex, filter, option)
             })
         },
         removeMany: (filter, option) => {
             return makeTransactionAction("readwrite", (storeIndex) => {
-                return removeMany(storeIndex, filter, option)
+                return removeManyCursor(storeIndex, filter, option)
             })
         },
-        find: (filter) => {
-            return makeTransactionAction("readonly", (storeIndex) => {
-                return find(storeIndex, filter)
+        findOne: (filter: ((item: T) => any) | IDBValidKey, option) => {
+            return makeTransactionAction("readonly", (objectStore) => {
+                if (typeof filter !== "function") return findOne(objectStore, filter)
+                return findOneCursor(objectStore, filter, option)
             })
         },
-        findOne: (filter, option) => {
-            return makeTransactionAction("readonly", (storeIndex) => {
-                return findOne(storeIndex, filter, option)
+        findMany: (filter: ((item: T) => any) | IDBValidKey | IDBKeyRange | undefined, option) => {
+            return makeTransactionAction("readonly", (objectStore) => {
+                if (typeof filter !== "function") return findManyKeyRange(objectStore, filter)
+                return findManyCursor(objectStore, filter, option)
             })
         },
-        findMany: (filter, option) => {
-            return makeTransactionAction("readonly", (storeIndex) => {
-                return findMany(storeIndex, filter, option)
-            })
-        },
-        count: (filter) => {
-            return makeTransactionAction("readonly", (storeIndex) => {
-                return count(storeIndex, filter)
-            })
-        },
-        countMany: (filter, option) => {
-            return makeTransactionAction("readonly", (storeIndex) => {
-                return countMany(storeIndex, filter, option)
+        count: (filter: ((item: T) => any) | IDBValidKey | IDBKeyRange | undefined, option) => {
+            return makeTransactionAction("readonly", (objectStore) => {
+                if (typeof filter !== "function") return countMany(objectStore, filter)
+                return countManyCursor(objectStore, filter, option)
             })
         }
     } as LDBIndexCollection<T>
