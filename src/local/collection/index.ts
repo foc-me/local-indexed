@@ -1,23 +1,12 @@
 import { type IDBActionRequest, requestAction } from "../../lib/request"
 import { transactionAction } from "../../lib/transaction"
-import { LDBContext } from "../context"
-import {
-    type IDBIndexInfo,
-    insertOne,
-    insertMany,
-    update,
-    updateOne,
-    updateMany,
-    remove,
-    removeOne,
-    removeMany,
-    getIndexes,
-    find,
-    findOne,
-    findMany,
-    count,
-    countMany
-} from "./action"
+import { type LDBContext } from "../context"
+import { type IDBIndexInfo, getIndexes } from "./indexes"
+import { insertOne, insertMany } from "./insert"
+import { updateOne, updateOneCursor, updateMany, updateManyCursor } from "./update"
+import { removeOne, removeOneCursor, removeManyKeyRange, removeManyCursor } from "./remove"
+import { findOne, findOneCursor, findManyKeyRange, findManyCursor } from "./find"
+import { countMany, countManyCursor } from "./count"
 import {
     type LDBIndexOption,
     type LDBCollectionOption,
@@ -64,7 +53,7 @@ export interface LDBCollection<T extends object> {
      * @param index index name
      * @param option create store index option
      */
-    createIndex(index: string, option: LDBIndexOption): boolean
+    createIndex(index: string, option?: LDBIndexOption): boolean
     /**
      * delete store index
      * 
@@ -75,25 +64,19 @@ export interface LDBCollection<T extends object> {
     dropIndex(index: string): boolean
     // action api
     /**
-     * insert one value
+     * insert value
      * 
-     * @param value insert value
+     * @param value value
      */
     insertOne<K extends IDBValidKey>(value: any): Promise<K>
     /**
      * insert values
      * 
-     * @param values insert valeus
+     * @param values valeus
      */
     insertMany<K extends IDBValidKey>(value: any[]): Promise<K[]>
     /**
-     * update one value
-     * 
-     * @param value update value
-     */
-    update<K extends IDBValidKey>(value: any): Promise<K>
-    /**
-     * update one value with cursor
+     * update value with cursor
      * 
      * close cursor after first value updated
      * 
@@ -108,6 +91,12 @@ export interface LDBCollection<T extends object> {
         }
     ): Promise<K | undefined>
     /**
+     * update value
+     * 
+     * @param value value
+     */
+    updateOne<K extends IDBValidKey>(value: any): Promise<K | undefined>
+    /**
      * update values with cursor
      * 
      * @param filter cursor filter
@@ -121,11 +110,11 @@ export interface LDBCollection<T extends object> {
         }
     ): Promise<K[]>
     /**
-     * delete value by keys
+     * update values
      * 
-     * @param value delete keys
+     * @param values values
      */
-    remove(value: IDBValidKey): Promise<void>
+    updateMany<K extends IDBValidKey>(values: any[]): Promise<K[]>
     /**
      * delete value with cursor
      * 
@@ -142,6 +131,12 @@ export interface LDBCollection<T extends object> {
         }
     ): Promise<number>
     /**
+     * delete value
+     * 
+     * @param value key value
+     */
+    removeOne(value: IDBValidKey): Promise<number>
+    /**
      * delete values with cursor
      * 
      * @param filter cursor filter
@@ -155,6 +150,12 @@ export interface LDBCollection<T extends object> {
         }
     ): Promise<number>
     /**
+     * delete values
+     * 
+     * @param range key range
+     */
+    removeMany(range: IDBKeyRange): Promise<undefined>
+    /**
      * get index detials in specified object store
      */
     getIndexes(): Promise<IDBIndexInfo[]>
@@ -165,27 +166,7 @@ export interface LDBCollection<T extends object> {
      */
     index(name: string): LDBIndexCollection<T>
     /**
-     * get value by key
-     * 
-     * @param value key value
-     */
-    find(value: IDBValidKey): Promise<T | undefined>
-    /**
-     * find values by key range
-     * 
-     * @param value key range
-     */
-    find(range: IDBKeyRange): Promise<T[]>
-    /**
-     * find values by filter
-     * 
-     * @param filter value filter
-     */
-    find(filter?: (item: T) => boolean): Promise<T[]>
-    /**
      * get value with cursor
-     * 
-     * close cursor after first value finded
      * 
      * @param filter cursor filter
      * @param option cursor option
@@ -197,6 +178,12 @@ export interface LDBCollection<T extends object> {
             direction?: IDBCursorDirection
         }
     ): Promise<T | undefined>
+    /**
+     * get value
+     * 
+     * @param value key value
+     */
+    findOne(value: IDBValidKey): Promise<T[]>
     /**
      * get values with cursor
      * 
@@ -211,36 +198,31 @@ export interface LDBCollection<T extends object> {
         }
     ): Promise<T[]>
     /**
-     * count value by key
-     * 
-     * @param value key value
-     */
-    count(value: IDBValidKey): Promise<number>
-    /**
-     * count values by key range
+     * get values
      * 
      * @param value key range
      */
-    count(range: IDBKeyRange): Promise<number>
-    /**
-     * count values by filter
-     * 
-     * @param filter value filter
-     */
-    count(filter?: (item: T) => boolean): Promise<number>
+    findMany(range?: IDBValidKey | IDBKeyRange): Promise<T[]>
     /**
      * count values with cursor
      * 
      * @param filter cursor filter
      * @param option cursor option
      */
-    countMany(
+    count(
         filter: (item: T) => boolean,
         option?: {
             query?: IDBValidKey | IDBKeyRange,
-            direction?: IDBCursorDirection
+            direction?: IDBCursorDirection,
+            curosr?: boolean
         }
     ): Promise<number>
+    /**
+     * count values
+     * 
+     * @param value key value or key range
+     */
+    count(value?: IDBValidKey | IDBKeyRange): Promise<number>
 }
 
 /**
@@ -307,34 +289,28 @@ export function collection<T extends object>(context: LDBContext, store: string)
                 return insertMany(objectStore, value)
             })
         },
-        update: (value) => {
+        updateOne: (filter: ((item: T) => any) | any, option) => {
             return makeTransactionAction("readwrite", (objectStore) => {
-                return update(objectStore, value)
+                if (typeof filter !== "function") return updateOne(objectStore, filter)
+                return updateOneCursor(objectStore, filter, option)
             })
         },
-        updateOne: (filter, option) => {
+        updateMany: (filter: ((item: T) => any) | any[], option) => {
             return makeTransactionAction("readwrite", (objectStore) => {
-                return updateOne(objectStore, filter, option)
+                if (typeof filter !== "function") return updateMany(objectStore, filter)
+                return updateManyCursor(objectStore, filter, option)
             })
         },
-        updateMany: (filter, option) => {
+        removeOne: (filter: ((item: T) => any) | IDBValidKey, option) => {
             return makeTransactionAction("readwrite", (objectStore) => {
-                return updateMany(objectStore, filter, option)
+                if (typeof filter !== "function") return removeOne(objectStore, filter)
+                return removeOneCursor(objectStore, filter, option)
             })
         },
-        remove: (value) => {
+        removeMany: (filter: ((item: T) => any) | IDBKeyRange, option) => {
             return makeTransactionAction("readwrite", (objectStore) => {
-                return remove(objectStore, value)
-            })
-        },
-        removeOne: (filter, option) => {
-            return makeTransactionAction("readwrite", (objectStore) => {
-                return removeOne(objectStore, filter, option)
-            })
-        },
-        removeMany: (filter, option) => {
-            return makeTransactionAction("readwrite", (objectStore) => {
-                return removeMany(objectStore, filter, option)
+                if (typeof filter !== "function") return removeManyKeyRange(objectStore, filter)
+                return removeManyCursor(objectStore, filter, option)
             })
         },
         getIndexes: () => {
@@ -345,29 +321,22 @@ export function collection<T extends object>(context: LDBContext, store: string)
         index: (name) => {
             return indexCollection(context, store, name)
         },
-        find: (filter) => {
+        findOne: (filter: ((item: T) => any) | IDBValidKey, option) => {
             return makeTransactionAction("readonly", (objectStore) => {
-                return find(objectStore, filter)
+                if (typeof filter !== "function") return findOne(objectStore, filter)
+                return findOneCursor(objectStore, filter, option)
             })
         },
-        findOne: (filter, option) => {
+        findMany: (filter: ((item: T) => any) | IDBValidKey | IDBKeyRange | undefined, option) => {
             return makeTransactionAction("readonly", (objectStore) => {
-                return findOne(objectStore, filter, option)
+                if (typeof filter !== "function") return findManyKeyRange(objectStore, filter)
+                return findManyCursor(objectStore, filter, option)
             })
         },
-        findMany: (filter, option) => {
+        count: (filter: ((item: T) => any) | IDBValidKey | IDBKeyRange | undefined, option) => {
             return makeTransactionAction("readonly", (objectStore) => {
-                return findMany(objectStore, filter, option)
-            })
-        },
-        count: (filter) => {
-            return makeTransactionAction("readonly", (objectStore) => {
-                return count(objectStore, filter)
-            })
-        },
-        countMany: (filter, option) => {
-            return makeTransactionAction("readonly", (objectStore) => {
-                return countMany(objectStore, filter, option)
+                if (typeof filter !== "function") return countMany(objectStore, filter)
+                return countManyCursor(objectStore, filter, option)
             })
         }
     } as LDBCollection<T>

@@ -24,7 +24,7 @@ describe("check collection", () => {
             const item = Object.assign({ id: i, value: i, re10: i % 10 }, odd)
             expect(await store.insertOne<number>(item)).toBe(i)
         }
-        const result = await store.find()
+        const result = await store.findMany()
         expect(result.length).toBe(10)
         for (let i = 0; i < 10; i++) {
             const item = result[i]
@@ -47,7 +47,7 @@ describe("check collection", () => {
         }))
         expect(ids.length).toBe(90)
         ids.forEach((id, index) => expect(id).toBe(index + 11))
-        const result = await store.find()
+        const result = await store.findMany()
         expect(result.length).toBe(100)
         for (let i = 0; i < 100; i++) {
             const item = result[i]
@@ -63,7 +63,7 @@ describe("check collection", () => {
     it("check find", async () => {
         const indexed = localIndexed(databaseName)
         const collection = indexed.collection<Store>(storeName)
-        const results = await collection.find((item) => item.odd === "odd")
+        const results = await collection.findMany((item) => item.odd === "odd")
         expect(results.length).toBe(50)
         for (let i = 0; i < results.length; i++) {
             const item = results[i]

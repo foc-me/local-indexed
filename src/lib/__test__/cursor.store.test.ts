@@ -34,14 +34,14 @@ describe("check cursor", () => {
 
         const database = await getDatabase(databaseName)
         const transaction = database.transaction(storeName, "readonly")
-        const result = await transactionAction<Store[]>(transaction, () => {
+        const results = await transactionAction<Store[]>(transaction, () => {
             const objectStore = transaction.objectStore(storeName)
             return objectStore.getAll()
         })
-        expect(Array.isArray(result)).toBe(true)
-        expect(result.length).toBe(100)
-        for (let i = 0; i < result.length; i++) {
-            const item = result[i]
+        expect(Array.isArray(results)).toBe(true)
+        expect(results.length).toBe(100)
+        for (let i = 0; i < results.length; i++) {
+            const item = results[i]
             const value = i + 1
             const re10 = i % 10 + 1
             expect(item.id).toBe(value)
@@ -50,10 +50,21 @@ describe("check cursor", () => {
             expect(item.re10).toBe(re10 === 10 ? 0 : re10)
         }
     })
-    it("check cursor", async () => {
+    it("check store cursor error", async () => {
         const database = await getDatabase(databaseName)
         const transaction = database.transaction(storeName, "readonly")
-        const result = await transactionAction<Store[]>(transaction, async () => {
+        await expect(transactionAction(transaction, async () => {
+            const objectStore = transaction.objectStore(storeName)
+            const request = objectStore.openCursor()
+            await cursorAction(request, () => {
+                throw new Error("error")
+            })
+        })).rejects.toThrow("error")
+    })
+    it("check store cursor", async () => {
+        const database = await getDatabase(databaseName)
+        const transaction = database.transaction(storeName, "readonly")
+        const results = await transactionAction<Store[]>(transaction, async () => {
             const objectStore = transaction.objectStore(storeName)
             const request = objectStore.openCursor()
             const result: Store[] = []
@@ -64,10 +75,11 @@ describe("check cursor", () => {
             })
             return { result }
         })
-        expect(Array.isArray(result)).toBe(true)
-        expect(result.length).toBe(50)
-        for (let i = 0; i < result.length; i++) {
-            const item = result[i]
+
+        expect(Array.isArray(results)).toBe(true)
+        expect(results.length).toBe(50)
+        for (let i = 0; i < results.length; i++) {
+            const item = results[i]
             const value = (i + 1) * 2
             const re10 = (i % 5 + 1) * 2
             expect(item.id).toBe(value)
@@ -76,25 +88,26 @@ describe("check cursor", () => {
             expect(item.re10).toBe(re10 === 10 ? 0 : re10)
         }
     })
-    it("check cursor stop", async () => {
+    it("check store cursor stop", async () => {
         const database = await getDatabase(databaseName)
         const transaction = database.transaction(storeName, "readonly")
-        const result = await transactionAction<Store[]>(transaction, async () => {
+        const results = await transactionAction<Store[]>(transaction, async () => {
             const objectStore = transaction.objectStore(storeName)
             const request = objectStore.openCursor()
             const result: Store[] = []
             await cursorAction(request, (cursor) => {
                 const value = cursor.value as Store
                 if (value.odd === "odd") result.push(value)
-                if (value.id < 51) cursor.continue()
+                if (value.id < 50) cursor.continue()
                 else return true
             })
             return { result }
         })
-        expect(Array.isArray(result)).toBe(true)
-        expect(result.length).toBe(25)
-        for (let i = 0; i < result.length; i++) {
-            const item = result[i]
+
+        expect(Array.isArray(results)).toBe(true)
+        expect(results.length).toBe(25)
+        for (let i = 0; i < results.length; i++) {
+            const item = results[i]
             const value = (i + 1) * 2
             const re10 = (i % 5 + 1) * 2
             expect(item.id).toBe(value)
@@ -103,7 +116,7 @@ describe("check cursor", () => {
             expect(item.re10).toBe(re10 === 10 ? 0 : re10)
         }
     })
-    it("check cursor update", async () => {
+    it("check store cursor update", async () => {
         const database = await getDatabase(databaseName)
         const writeTrans = database.transaction(storeName, "readwrite")
         const ids = await transactionAction<number[]>(writeTrans, async () => {
@@ -128,25 +141,25 @@ describe("check cursor", () => {
         }, { autoClose: false })
         expect(Array.isArray(ids)).toBe(true)
         expect(ids.length).toBe(100)
-        for (let i = 0; i < ids.length; i++) {
-            expect(ids[i]).toBe(i + 1)
-        }
+        ids.forEach((id, index) => {
+            expect(id).toBe(index + 1)
+        })
 
         const readTrans = database.transaction(storeName, "readonly")
-        const result = await transactionAction<Store[]>(readTrans, () => {
+        const results = await transactionAction<Store[]>(readTrans, () => {
             const objectStore = readTrans.objectStore(storeName)
             return objectStore.getAll()
         })
-        expect(result.length).toBe(100)
-        for (let i = 0; i < result.length; i++) {
-            const item = result[i]
+        expect(results.length).toBe(100)
+        for (let i = 0; i < results.length; i++) {
+            const item = results[i]
             expect(item.id).toBe(i + 1)
             expect(item.value).toBe((i + 1) * 10)
             expect(item.odd).toBe("odd")
             expect(item.re10).toBe(0)
         }
     })
-    it("check cursor delete", async () => {
+    it("check store cursor delete", async () => {
         const database = await getDatabase(databaseName)
         const writeTrans = database.transaction(storeName, "readwrite")
         const ids = await transactionAction<number[]>(writeTrans, async () => {
@@ -165,18 +178,18 @@ describe("check cursor", () => {
         }, { autoClose: false })
         expect(Array.isArray(ids)).toBe(true)
         expect(ids.length).toBe(50)
-        for (let i = 0; i < ids.length; i++) {
-            expect(ids[i]).toBe(Math.floor(i / 5) * 10 + i % 5 + 1)
-        }
+        ids.forEach((id, index) => {
+            expect(id).toBe(Math.floor(index / 5) * 10 + index % 5 + 1)
+        })
 
         const readTrans = database.transaction(storeName, "readonly")
-        const result = await transactionAction<Store[]>(readTrans, () => {
+        const results = await transactionAction<Store[]>(readTrans, () => {
             const objectStore = readTrans.objectStore(storeName)
             return objectStore.getAll()
         })
-        expect(result.length).toBe(50)
-        for (let i = 0; i < result.length; i++) {
-            const item = result[i]
+        expect(results.length).toBe(50)
+        for (let i = 0; i < results.length; i++) {
+            const item = results[i]
             const id = Math.floor(i / 5) * 10 + i % 5 + 6
             expect(item.id).toBe(id)
             expect(item.value).toBe(id * 10)
