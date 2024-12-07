@@ -84,7 +84,7 @@ export interface LDBIndexCollection<T extends object> {
      * 
      * @param value key value
      */
-    findOne(value: IDBValidKey): Promise<T[]>
+    findOne(value: IDBValidKey): Promise<T | undefined>
     /**
      * get values with cursor
      * 

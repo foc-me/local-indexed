@@ -38,7 +38,44 @@ describe("check indexed.upgrade with collection", () => {
             }
         })
     })
-    it("check collection alter findMany insertMany", async () => {
+    it("check collection findOne", async () => {
+        const indexed = localIndexed(databaseName)
+        await indexed.upgrade(async () => {
+            const collection = indexed.collection<Store>(storeName)
+            const count = await collection.count()
+            expect(count).toBe(100)
+            for (let i = 0; i < count; i++) {
+                const value = i + 1
+                const item = await collection.findOne(value)
+                if (item) {
+                    expect(item.id).toBe(value)
+                    expect(item.value).toBe(value)
+                    expect(item.odd).toBe(i % 2 === 1 ? "odd" : undefined)
+                    expect(item.re10).toBe((i + 1) % 10)
+                } else throw new Error("item should not be undefined")
+            }
+        })
+    })
+    it("check collection count", async () => {
+        const indexed = localIndexed(databaseName)
+        await indexed.upgrade(async () => {
+            const collection = indexed.collection<Store>(storeName)
+            expect(await collection.count()).toBe(100)
+            for (let i = 0; i < 20; i++) {
+                expect(await collection.count(i + 1)).toBe(1)
+            }
+            for (let i = 0; i < 2; i++) {
+                const start = (i + 2) * 10 + 1
+                expect(await collection.count(IDBKeyRange.bound(start, start + 9))).toBe(10)
+            }
+            expect(await collection.count(() => true, { query: IDBKeyRange.bound(51, 100) })).toBe(50)
+            expect(await collection.count((item) => item.odd === "odd")).toBe(50)
+            for (let i = 0; i < 10; i++) {
+                expect(await collection.count((item) => item.re10 === i)).toBe(10)
+            }
+        })
+    })
+    it("check collection alter insertMany findMany", async () => {
         const indexed = localIndexed(databaseName)
         await indexed.upgrade(async () => {
             const collection = indexed.collection<Store>(storeName)
@@ -61,53 +98,26 @@ describe("check indexed.upgrade with collection", () => {
                 expect(oneItems[0].re10).toBe((i + 1) % 10)
             }
 
-            const checkItems = await collection.findMany(IDBKeyRange.bound(1, 50))
-            expect(checkItems.length).toBe(50)
+            const checkItems = await collection.findMany(IDBKeyRange.bound(21, 50))
+            expect(checkItems.length).toBe(30)
             for (let i = 0; i < checkItems.length; i++) {
                 const item = checkItems[i]
-                const value = i + 1
+                const value = i + 1 + 20
                 expect(item.id).toBe(value)
                 expect(item.value).toBe(value)
                 expect(item.odd).toBe(i % 2 === 1 ? "odd" : undefined)
                 expect(item.re10).toBe((i + 1) % 10)
             }
-        })
-    })
-    it("check collection createIndex indexes index", async () => {
-        const indexed = localIndexed(databaseName)
-        await indexed.upgrade(async () => {
-            const collection = indexed.collection<Store>(storeName)
-            collection.createIndex("odd", { unique: false })
-            collection.createIndex("re10", { unique: false })
-            const indexes = await collection.getIndexes()
-            expect(indexes.length).toBe(2)
-            expect(indexes.map(item => item.name)).toEqual(["odd", "re10"])
 
-            const oddCollection = collection.index("odd")
-            const oddItems = await oddCollection.findMany()
-            expect(oddItems.length).toBe(50)
-            for (let i = 0; i < oddItems.length; i++) {
-                const item = oddItems[i]
-                const value = (i + 1) * 2
-                const re10 = (i % 5 + 1) * 2
+            const lastItems = await collection.findMany((item) => item.id > 50)
+            expect(lastItems.length).toBe(50)
+            for (let i = 0; i < checkItems.length; i++) {
+                const item = lastItems[i]
+                const value = i + 1 + 50
                 expect(item.id).toBe(value)
                 expect(item.value).toBe(value)
-                expect(item.odd).toBe("odd")
-                expect(item.re10).toBe(re10 === 10 ? 0 : re10)
-            }
-
-            const reCollection = collection.index("re10")
-            const reItems = await reCollection.findMany()
-            expect(reItems.length).toBe(100)
-            for (let i = 0; i < reItems.length; i++) {
-                const item = reItems[i]
-                const re10 = i < 10 ? 0 : Math.floor(i / 10)
-                const value = i < 10 ? (i + 1) * 10 : i % 10 * 10 + re10
-                const odd = i < 10 ? "odd" : (Math.floor(i / 10) % 2 === 1 ? undefined : "odd")
-                expect(item.id).toBe(value)
-                expect(item.value).toBe(value)
-                expect(item.odd).toBe(odd)
-                expect(item.re10).toBe(re10)
+                expect(item.odd).toBe(i % 2 === 1 ? "odd" : undefined)
+                expect(item.re10).toBe((i + 1) % 10)
             }
         })
     })
@@ -192,6 +202,27 @@ describe("check indexed.upgrade with collection", () => {
             expect(item.odd).toBe("odd")
             expect(item.re10).toBe(0)
         }
+    })
+    it("check collection removeOne removeMany", async () => {
+        const indexed = localIndexed(databaseName)
+        await indexed.upgrade(async () => {
+            const collection = indexed.collection<Store>(storeName)
+            expect(await collection.count()).toBe(100)
+            for (let i = 0; i < 30; i++) {
+                expect(await collection.removeOne((item) => {
+                    return item.id === i + 1 + 20
+                })).toBe(1)
+            }
+            expect(await collection.count()).toBe(70)
+            for (let i = 0; i < 20; i++) {
+                expect(await collection.removeOne(i + 1)).toBe(1)
+            }
+            expect(await collection.count()).toBe(50)
+            expect(await collection.removeMany(IDBKeyRange.bound(51, 70))).toBe(undefined)
+            expect(await collection.count()).toBe(30)
+            expect(await collection.removeMany(() => true)).toBe(30)
+            expect(await collection.count()).toBe(0)
+        })
     })
     it("delete database", async () => {
         await localIndexed.deleteDatabase(databaseName)

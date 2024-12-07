@@ -12,7 +12,7 @@ describe("check indexed.upgrade with collection", () => {
         expect(await indexed.version()).toBe(0)
         expect((await localIndexed.databases()).length).toEqual(0)
     })
-    it("check collection insertOne count getIndexes findMany", async () => {
+    it("check upgrade", async () => {
         const indexed = localIndexed(databaseName)
         await indexed.upgrade(async () => {
             const collection = indexed.collection<Store>(storeName)
@@ -42,161 +42,169 @@ describe("check indexed.upgrade with collection", () => {
             }
         })
     })
-    // it("check collection alter findMany insertMany", async () => {
-    //     const indexed = localIndexed(databaseName)
-    //     await indexed.upgrade(async () => {
-    //         const collection = indexed.collection<Store>(storeName)
-    //         const items = await collection.findMany()
-    //         expect(items.length).toBe(100)
-    //         collection.alter({ keyPath: "id", autoIncrement: true })
-    //         const ids = await collection.insertMany(items)
-    //         expect(ids.length).toBe(100)
-    //         ids.forEach((id, index) => {
-    //             expect(id).toBe(index + 1)
-    //         })
+    it("check collection updateOne updateMany abort", async () => {
+        const indexed = localIndexed(databaseName)
+        await indexed.upgrade(async () => {
+            const collection = indexed.collection<Store>(storeName)
 
-    //         for (let i = 0; i < 20; i++) {
-    //             const oneItems = await collection.findMany(i)
-    //             const value = i + 1
-    //             expect(oneItems.length).toBe(1)
-    //             expect(oneItems[0].id).toBe(value)
-    //             expect(oneItems[0].value).toBe(value)
-    //             expect(oneItems[0].odd).toBe(i % 2 === 1 ? "odd" : undefined)
-    //             expect(oneItems[0].re10).toBe((i + 1) % 10)
-    //         }
+            const odd = collection.index("odd")
+            const ids = new Array(50).fill(undefined).map((item, index) => {
+                return (index + 1) * 2
+            })
+            expect(await odd.updateMany((item) => {
+                return { id: item.id, value: item.value * 10, odd: "odd", re10: 0 }
+            })).toEqual(ids)
 
-    //         const checkItems = await collection.findMany(IDBKeyRange.bound(1, 50))
-    //         expect(checkItems.length).toBe(50)
-    //         for (let i = 0; i < checkItems.length; i++) {
-    //             const item = checkItems[i]
-    //             const value = i + 1
-    //             expect(item.id).toBe(value)
-    //             expect(item.value).toBe(value)
-    //             expect(item.odd).toBe(i % 2 === 1 ? "odd" : undefined)
-    //             expect(item.re10).toBe((i + 1) % 10)
-    //         }
-    //     })
-    // })
-    // it("check collection createIndex indexes index", async () => {
-    //     const indexed = localIndexed(databaseName)
-    //     await indexed.upgrade(async () => {
-    //         const collection = indexed.collection<Store>(storeName)
-    //         collection.createIndex("odd", { unique: false })
-    //         collection.createIndex("re10", { unique: false })
-    //         const indexes = await collection.getIndexes()
-    //         expect(indexes.length).toBe(2)
-    //         expect(indexes.map(item => item.name)).toEqual(["odd", "re10"])
+            const re = collection.index("re10")
+            for (let i = 0; i < 10; i++) {
+                for (let j = 0; j < 2; j++) {
+                    const id = i * 10 + j * 2 + 1
+                    expect(await re.updateOne((item) => {
+                        if (item.id === id) {
+                            return { id: item.id, value: item.value * 10, odd: "odd", re10: 0 }
+                        }
+                    })).toBe(id)
+                }
+            }
+            for (let j = 0; j < 3; j++) {
+                const re10 = (j + 2) * 2 + 1
+                const ids = new Array(10).fill(undefined).map((item, index) => {
+                    return index * 10 + re10
+                })
+                expect(await re.updateMany((item) => {
+                    if (item.re10 === re10) {
+                        return { id: item.id, value: item.value * 10, odd: "odd", re10: 0 }
+                    }
+                })).toEqual(ids)
+            }
 
-    //         const oddCollection = collection.index("odd")
-    //         const oddItems = await oddCollection.findMany()
-    //         expect(oddItems.length).toBe(50)
-    //         for (let i = 0; i < oddItems.length; i++) {
-    //             const item = oddItems[i]
-    //             const value = (i + 1) * 2
-    //             const re10 = (i % 5 + 1) * 2
-    //             expect(item.id).toBe(value)
-    //             expect(item.value).toBe(value)
-    //             expect(item.odd).toBe("odd")
-    //             expect(item.re10).toBe(re10 === 10 ? 0 : re10)
-    //         }
+            const items = await collection.findMany()
+            expect(items.length).toBe(100)
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i]
+                expect(item.id).toBe(i + 1)
+                expect(item.value).toBe((i + 1) * 10)
+                expect(item.odd).toBe("odd")
+                expect(item.re10).toBe(0)
+            }
 
-    //         const reCollection = collection.index("re10")
-    //         const reItems = await reCollection.findMany()
-    //         expect(reItems.length).toBe(100)
-    //         for (let i = 0; i < reItems.length; i++) {
-    //             const item = reItems[i]
-    //             const re10 = i < 10 ? 0 : Math.floor(i / 10)
-    //             const value = i < 10 ? (i + 1) * 10 : i % 10 * 10 + re10
-    //             const odd = i < 10 ? "odd" : (Math.floor(i / 10) % 2 === 1 ? undefined : "odd")
-    //             expect(item.id).toBe(value)
-    //             expect(item.value).toBe(value)
-    //             expect(item.odd).toBe(odd)
-    //             expect(item.re10).toBe(re10)
-    //         }
-    //     })
-    // })
-    // it("check collection updateOne updateMany", async () => {
-    //     const indexed = localIndexed(databaseName)
-    //     await indexed.upgrade(async () => {
-    //         const collection = indexed.collection<Store>(storeName)
-    //         for (let i = 0; i < 20; i++) {
-    //             const id = i + 1
-    //             expect(await collection.updateOne({ id, value: id * 10, odd: "odd", re10: 0 })).toBe(id)
-    //         }
-    //         for (let i = 0; i < 30; i++) {
-    //             const id = i + 1 + 20
-    //             expect(await collection.updateOne((item) => {
-    //                 if (item.id === id) {
-    //                     return { id: item.id, value: item.value * 10, odd: "odd", re10: 0 }
-    //                 }
-    //             })).toBe(id)
-    //         }
-    //         for (let i = 0; i < 2; i++) {
-    //             const start = i * 10 + 1 + 50
-    //             const query = IDBKeyRange.bound(start, start + 9)
-    //             const ids = await collection.updateMany((item) => {
-    //                 return { id: item.id, value: item.value * 10, odd: "odd", re10: 0 }
-    //             }, { query })
-    //             expect(ids.length).toBe(10)
-    //             ids.forEach((id, index) => {
-    //                 expect(id).toBe(start + index)
-    //             })
-    //         }
-    //         const ids = await collection.updateMany(new Array(10).fill(undefined).map((item, index) => {
-    //             const id = index + 1 + 70
-    //             return { id, value: id * 10, odd: "odd", re10: 0 }
-    //         }))
-    //         expect(ids.length).toBe(10)
-    //         ids.forEach((id, index) => {
-    //             expect(id).toBe(index + 1 + 70)
-    //         })
-    //         const lastIds = await collection.updateMany((item) => {
-    //             return { id: item.id, value: item.value * 10, odd: "odd", re10: 0 }
-    //         }, { query: IDBKeyRange.bound(81, 100) })
-    //         expect(lastIds.length).toBe(20)
-    //         lastIds.forEach((id, index) => {
-    //             expect(id).toBe(index + 1 + 80)
-    //         })
-    //     })
-    // })
-    // it("check abort", async () => {
-    //     const indexed = localIndexed(databaseName)
-    //     await indexed.upgrade(async () => {
-    //         const collection = indexed.collection<Store>(storeName)
-    //         const ids = await collection.updateMany((item) => {
-    //             const value = Math.floor(item.value / 10)
-    //             const odd = value % 2 === 0 ? { odd: "odd" } : {}
-    //             return Object.assign({ id: item.id, value, re10: value % 10 }, odd)
-    //         })
-    //         expect(ids.length).toBe(100)
-    //         ids.forEach((id, index) => {
-    //             expect(id).toBe(index + 1)
-    //         })
+            indexed.abort()
+        })
+    })
+    it("check collection count", async () => {
+        const indexed = localIndexed(databaseName)
+        await indexed.upgrade(async () => {
+            const collection = indexed.collection<Store>(storeName)
+            const odd = collection.index("odd")
+            expect(await odd.count()).toBe(50)
+            const re = collection.index("re10")
+            expect(await re.count()).toBe(100)
+            for (let i = 0; i < 10; i++) {
+                expect(await re.count(i)).toBe(10)
+            }
+            for (let i = 0; i < 10; i++) {
+                const range = IDBKeyRange.bound(i, 9)
+                expect(await re.count(range)).toBe(100 - i * 10)
+            }
+            for (let i = 0; i < 10; i++) {
+                expect(await re.count((item) => item.re10 === i)).toBe(10)
+            }
+        })
+    })
+    it("check collection findOne findMany", async () => {
+        const indexed = localIndexed(databaseName)
+        await indexed.upgrade(async () => {
+            const collection = indexed.collection<Store>(storeName)
+            const odd = collection.index("odd")
+            const oddItems = await odd.findMany()
+            expect(oddItems.length).toBe(50)
+            for (let i = 0; i < oddItems.length; i++) {
+                const item = oddItems[i]
+                const value = (i + 1) * 2
+                const re10 = (i % 5 + 1) * 2
+                expect(item.id).toBe(value)
+                expect(item.value).toBe(value)
+                expect(item.odd).toBe("odd")
+                expect(item.re10).toBe(re10 === 10 ? 0 : re10)
+            }
 
-    //         const items = await collection.findMany()
-    //         expect(items.length).toBe(100)
-    //         for (let i = 0; i < items.length; i++) {
-    //             const item = items[i]
-    //             const value = i + 1
-    //             expect(item.id).toBe(value)
-    //             expect(item.value).toBe(value)
-    //             expect(item.odd).toBe(i % 2 === 1 ? "odd" : undefined)
-    //             expect(item.re10).toBe((i + 1) % 10)
-    //         }
-    //         indexed.abort()
-    //     })
+            const re = collection.index("re10")
+            for (let i = 0; i < 10; i++) {
+                const item = await re.findOne(i)
+                if (item) {
+                    expect(item.id).toBe(i === 0 ? 10 : i)
+                    expect(item.value).toBe(i === 0 ? 10 : i)
+                    expect(item.odd).toBe(i % 2 === 1 ? undefined : "odd")
+                    expect(item.re10).toBe(i)
+                } else throw new Error("item should not be undefined")
+            }
+            for (let i = 0; i < 10; i++) {
+                const item = await re.findOne((item) => item.re10 === i)
+                if (item) {
+                    expect(item.id).toBe(i === 0 ? 10 : i)
+                    expect(item.value).toBe(i === 0 ? 10 : i)
+                    expect(item.odd).toBe(i % 2 === 1 ? undefined : "odd")
+                    expect(item.re10).toBe(i)
+                } else throw new Error("item should not be undefined")
+            }
+            for (let i = 0; i < 10; i++) {
+                const items = await re.findMany(i)
+                expect(items.length).toBe(10)
+                for (let j = 0; j < items.length; j++) {
+                    const item = items[j]
+                    const value = i === 0 ? (j + 1) * 10 : j * 10 + i
+                    expect(item.id).toBe(value)
+                    expect(item.value).toBe(value)
+                    expect(item.odd).toBe(i !== 0 && i % 2 === 1 ? undefined : "odd")
+                    expect(item.re10).toBe(i)
+                }
+            }
+            for (let i = 0; i < 10; i++) {
+                const items = await re.findMany(IDBKeyRange.bound(i, i))
+                expect(items.length).toBe(10)
+                for (let j = 0; j < items.length; j++) {
+                    const item = items[j]
+                    const value = i === 0 ? (j + 1) * 10 : j * 10 + i
+                    expect(item.id).toBe(value)
+                    expect(item.value).toBe(value)
+                    expect(item.odd).toBe(i !== 0 && i % 2 === 1 ? undefined : "odd")
+                    expect(item.re10).toBe(i)
+                }
+            }
+            for (let i = 0; i < 10; i++) {
+                const items = await re.findMany((item) => item.re10 === i)
+                expect(items.length).toBe(10)
+                for (let j = 0; j < items.length; j++) {
+                    const item = items[j]
+                    const value = i === 0 ? (j + 1) * 10 : j * 10 + i
+                    expect(item.id).toBe(value)
+                    expect(item.value).toBe(value)
+                    expect(item.odd).toBe(i !== 0 && i % 2 === 1 ? undefined : "odd")
+                    expect(item.re10).toBe(i)
+                }
+            }
+        })
+    })
+    it("check collection removeOne removeMany", async () => {
+        const indexed = localIndexed(databaseName)
+        await indexed.upgrade(async () => {
+            const collection = indexed.collection<Store>(storeName)
 
-    //     const collection = indexed.collection<Store>(storeName)
-    //     const items = await collection.findMany()
-    //     expect(items.length).toBe(100)
-    //     for (let i = 0; i < items.length; i++) {
-    //         const item = items[i]
-    //         expect(item.id).toBe(i + 1)
-    //         expect(item.value).toBe((i + 1) * 10)
-    //         expect(item.odd).toBe("odd")
-    //         expect(item.re10).toBe(0)
-    //     }
-    // })
+            const odd = collection.index("odd")
+            expect(await odd.removeMany((item) => true)).toBe(50)
+            expect(await collection.count()).toBe(50)
+
+            const re = collection.index("re10")
+            for (let i = 0; i < 10; i++) {
+                expect(await re.removeOne(item => item.re10 === 1)).toBe(1)
+            }
+            expect(await collection.count()).toBe(40)
+            for (let i = 0; i < 4; i++) {
+                expect(await re.removeMany(item => item.re10 === (i + 2) * 2 - 1)).toBe(10)
+            }
+            expect(await collection.count()).toBe(0)
+        })
+    })
     it("delete database", async () => {
         await localIndexed.deleteDatabase(databaseName)
         const indexed = localIndexed(databaseName)
