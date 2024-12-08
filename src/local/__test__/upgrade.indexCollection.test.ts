@@ -97,6 +97,9 @@ describe("check indexed.upgrade with collection", () => {
             const collection = indexed.collection<Store>(storeName)
             const odd = collection.index("odd")
             expect(await odd.count()).toBe(50)
+            expect(await odd.count("odd")).toBe(50)
+            expect(await odd.count((item) => item.odd === "odd")).toBe(50)
+            expect(await odd.count((item) => item.odd === undefined)).toBe(0)
             const re = collection.index("re10")
             expect(await re.count()).toBe(100)
             for (let i = 0; i < 10; i++) {
