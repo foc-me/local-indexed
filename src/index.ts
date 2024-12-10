@@ -1,2 +1,2 @@
-import localIndexed from "./local"
+import localIndexed from "./indexed"
 export default localIndexed
