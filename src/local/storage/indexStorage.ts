@@ -7,12 +7,6 @@ import { LDBContext } from "../context"
  */
 export interface LDBIndexStorage<T extends object> {
     /**
-     * get value from the store index
-     * 
-     * @param keyValue key path value of the store index
-     */
-    getItem(query: IDBValidKey | IDBKeyRange): Promise<T | undefined>
-    /**
      * count values from the store index
      */
     length(query?: IDBValidKey | IDBKeyRange): Promise<number>
@@ -61,11 +55,6 @@ export function indexStrage<T extends object>(context: LDBContext, store: string
     }
 
     return {
-        getItem: (query) => {
-            return makeTransactionAction(index, "readwrite", (storeIndex) => {
-                return storeIndex.get(query)
-            })
-        },
         length: (query) => {
             return makeTransactionAction(index, "readonly", (storeIndex) => {
                 return storeIndex.count(query)
