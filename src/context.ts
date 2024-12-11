@@ -52,9 +52,7 @@ export function makeContext(database: string, indexedDB?: IDBFactory, transactio
     }
 
     const setTransaction = (transaction?: IDBTransaction) => {
-        if (current.value) {
-            current.value.db.close()
-        }
+        if (current.value) current.value.db.close()
         current.value = transaction
     }
 
