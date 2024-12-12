@@ -12,7 +12,29 @@ import {
     dropIndex
 } from "./store"
 
+/**
+ * create index option
+ */
+export type LDBIndexInfo = {
+    name: string
+    keyPath: string | string[]
+    unique: boolean
+    multiEntry: boolean
+}
+
+/**
+ * create object store option
+ */
+export type LDBStoreInfo = {
+    name: string
+    keyPath: string | string[] | null
+    autoIncrement: boolean
+    indexes: Record<string, LDBIndexInfo>
+}
+
 export interface LDBCollection<T> {
+    //
+    info(): Promise<LDBStoreInfo>
     // upgrade
     create(option?: LDBStoreOption): boolean
     drop(): boolean
@@ -30,29 +52,51 @@ export interface LDBCollection<T> {
     find(keys: IDBValidKey[]): Promise<T[]>
     find(key?: IDBValidKey | IDBKeyRange, count?: number): Promise<T[]>
     //cursor
-    find(filter: (item: T) => boolean, option?: { sort: string, order: string }): LDBCursor<T>
+    find(filter: (item: T) => boolean, option?: { sort?: string, order?: string }): LDBCursor<T>
 }
 
-async function insert<K extends IDBValidKey>(objectStore: IDBObjectStore, values: any | any[]) {
-    values = Array.isArray(values) ? values : [values]
-    const result: K[] = []
-    for (let i = 0; i < values.length; i++) {
-        result.push(await requestAction(() => {
-            objectStore.add(values[i])
-        }))
-    }
-    return { result } as IDBActionRequest<K[]>
+function info(objectStore: IDBObjectStore) {
+    const { name, keyPath, autoIncrement, indexNames } = objectStore
+    const indexes: Record<string, LDBIndexInfo>[] = [...indexNames].map((name) => {
+        const { keyPath, unique, multiEntry } = objectStore.index(name)
+        return { [name]: { name, keyPath, unique, multiEntry } }
+    })
+    return {
+        result: {
+            name,
+            keyPath,
+            autoIncrement,
+            indexes: Object.assign({}, ...indexes)
+        }
+    } as IDBActionRequest<LDBStoreInfo>
 }
 
-async function update<K extends IDBValidKey>(objectStore: IDBObjectStore, values: any | any[]) {
-    values = Array.isArray(values) ? values : [values]
-    const result: K[] = []
+function insertOne(objectStore: IDBObjectStore, value: any) {
+    return objectStore.add(value)
+}
+
+async function insertMany(objectStore: IDBObjectStore, values: any[]) {
+    const result: IDBValidKey[] = []
     for (let i = 0; i < values.length; i++) {
         result.push(await requestAction(() => {
-            objectStore.put(values[i])
+            return objectStore.add(values[i])
         }))
     }
-    return { result } as IDBActionRequest<K[]>
+    return { result } as IDBActionRequest<IDBValidKey[]>
+}
+
+function updateOne(objectStore: IDBObjectStore, value: any) {
+    return objectStore.put(value)
+}
+
+async function updateMany(objectStore: IDBObjectStore, values: any[]) {
+    const result: IDBValidKey[] = []
+    for (let i = 0; i < values.length; i++) {
+        result.push(await requestAction(() => {
+            return objectStore.put(values[i])
+        }))
+    }
+    return { result } as IDBActionRequest<IDBValidKey[]>
 }
 
 async function remove(
@@ -75,16 +119,21 @@ async function find<T>(
     keys: IDBValidKey | IDBValidKey[] | IDBKeyRange,
     count?: number
 ) {
+    if (typeof count === "number") {
+        count++
+    }
     if (Array.isArray(keys)) {
         const result: T[] = []
         for (let i = 0; i < keys.length; i++) {
-            result.push(await requestAction(() => {
-                return objectStore.get(keys[i])
-            }))
+            if (count === undefined || result.length < count) {
+                result.push(await requestAction(() => {
+                    return objectStore.get(keys[i])
+                }))
+            }
         }
         return { result } as IDBActionRequest<T[]>
     }
-    return objectStore.getAll(keys)
+    return objectStore.getAll(keys, count)
 }
 
 export function collection<T>(context: LDBContext, store: string) {
@@ -117,6 +166,11 @@ export function collection<T>(context: LDBContext, store: string) {
     }
 
     return {
+        info: () => {
+            return makeTransactionAction("readwrite", (objectStore) => {
+                return info(objectStore)
+            })
+        },
         create: (option?: LDBStoreOption) => create(store, context, option),
         drop: () => drop(store, context),
         alter: (option?: LDBStoreOption) => alter(store, context, option),
@@ -124,12 +178,14 @@ export function collection<T>(context: LDBContext, store: string) {
         dropIndex: (name) => dropIndex(store, context, name),
         insert: (values: any | any[]) => {
             return makeTransactionAction("readwrite", (objectStore) => {
-                return insert(objectStore, values)
+                if (Array.isArray(values)) return insertMany(objectStore, values)
+                else return insertOne(objectStore, values)
             })
         },
         update: (values: any | any[]) => {
             return makeTransactionAction("readwrite", (objectStore) => {
-                return update(objectStore, values)
+                if (Array.isArray(values)) return updateMany(objectStore, values)
+                else return updateOne(objectStore, values)
             })
         },
         remove: (keys: IDBValidKey | IDBValidKey[] | IDBKeyRange) => {
@@ -139,10 +195,10 @@ export function collection<T>(context: LDBContext, store: string) {
         },
         find: (
             keys: IDBValidKey | IDBValidKey[] | IDBKeyRange | ((item: T) => boolean),
-            option?: number | { sort: string, order: IDBCursorDirection }
+            option?: number | { sort?: string, order?: IDBCursorDirection }
         ) => {
             if (typeof keys === "function") {
-                const { sort, order } = option as { sort: string, order: IDBCursorDirection } || {}
+                const { sort, order } = option as { sort?: string, order?: IDBCursorDirection } || {}
                 return cursor(store, context, keys, { index: sort, direction: order })
             }
             return makeTransactionAction("readonly", (objectStore) => {

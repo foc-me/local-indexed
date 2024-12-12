@@ -15,7 +15,7 @@ export type LDBIndexOption = {
 export type LDBStoreOption = {
     keyPath?: string | string[] | null
     autoIncrement?: boolean
-    index?: Record<string, LDBIndexOption>
+    indexes?: Record<string, LDBIndexOption>
 }
 
 /**
@@ -48,8 +48,8 @@ function containsStore(transaction: IDBTransaction, store: string) {
  * @returns splited option
  */
 function splitCollectionOption(option?: LDBStoreOption) {
-    const { keyPath, autoIncrement, index } = option || {}
-    return [{ keyPath, autoIncrement }, index] as [IDBObjectStoreParameters, Record<string, LDBIndexOption>]
+    const { keyPath, autoIncrement, indexes } = option || {}
+    return [{ keyPath, autoIncrement }, indexes] as [IDBObjectStoreParameters, Record<string, LDBIndexOption>]
 }
 
 /**

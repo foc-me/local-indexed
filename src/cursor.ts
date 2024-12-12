@@ -16,12 +16,6 @@ export type LDBCursorOption = {
     direction?: IDBCursorDirection
 }
 
-function makeTotal(limit?: number, skip?: number) {
-    if (typeof limit === "number" && !isNaN(limit)) {
-        limit
-    }
-}
-
 async function toList<T>(
     request: IDBRequest<IDBCursorWithValue | null>,
     filter: (item: T) => any,
@@ -29,9 +23,20 @@ async function toList<T>(
     skip?: number
 ) {
     const result: T[] = []
+    if (typeof limit === "number" && limit < 1) {
+        return { result } as IDBActionRequest<T[]>
+    }
+
     await cursorAction(request, (cursor) => {
-        if (filter(cursor.value) === true) {
-            result.push(cursor.value)
+        const match = filter(cursor.value) === true
+        if (match) {
+            if (typeof skip === "number" && skip > 0) {
+                skip--
+            } else if (limit === undefined || result.length < limit) {
+                result.push(cursor.value)
+            } else {
+                return true
+            }
         }
         cursor.continue()
     })

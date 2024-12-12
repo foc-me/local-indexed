@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto"
-import { getDatabases, deleteDatabase } from "../indexed"
-import { upgradeAction } from "../upgrade"
+import { getDatabases, deleteDatabase } from "../../lib/indexed"
+import { upgradeAction } from "../../lib/upgrade"
 
 const databaseName = "local-indexed"
 

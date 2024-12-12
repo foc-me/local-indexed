@@ -35,9 +35,9 @@ export function getIndexedDB(indexedDB?: IDBFactory) {
  * @param indexedDB indexedDB factory engine
  * @returns promise databases info
  */
-export function getDatabases(indexedDB?: IDBFactory) {
+export async function getDatabases(indexedDB?: IDBFactory) {
     const indexed = getIndexedDB(indexedDB)
-    return indexed.databases()
+    return await indexed.databases()
 }
 
 /**
