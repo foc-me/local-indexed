@@ -3,34 +3,16 @@ import { transactionAction } from "./lib/transaction"
 import { type LDBContext } from "./context"
 import { type LDBCursor, cursor } from "./cursor"
 import {
+    type LDBStoreInfo,
     type LDBStoreOption,
     type LDBIndexOption,
+    info,
     create,
     alter,
     drop,
     createIndex,
     dropIndex
 } from "./store"
-
-/**
- * create index option
- */
-export type LDBIndexInfo = {
-    name: string
-    keyPath: string | string[]
-    unique: boolean
-    multiEntry: boolean
-}
-
-/**
- * create object store option
- */
-export type LDBStoreInfo = {
-    name: string
-    keyPath: string | string[] | null
-    autoIncrement: boolean
-    indexes: Record<string, LDBIndexInfo>
-}
 
 export interface LDBCollection<T> {
     //
@@ -52,23 +34,7 @@ export interface LDBCollection<T> {
     find(keys: IDBValidKey[]): Promise<T[]>
     find(key?: IDBValidKey | IDBKeyRange, count?: number): Promise<T[]>
     //cursor
-    find(filter: (item: T) => boolean, option?: { sort?: string, order?: string }): LDBCursor<T>
-}
-
-function info(objectStore: IDBObjectStore) {
-    const { name, keyPath, autoIncrement, indexNames } = objectStore
-    const indexes: Record<string, LDBIndexInfo>[] = [...indexNames].map((name) => {
-        const { keyPath, unique, multiEntry } = objectStore.index(name)
-        return { [name]: { name, keyPath, unique, multiEntry } }
-    })
-    return {
-        result: {
-            name,
-            keyPath,
-            autoIncrement,
-            indexes: Object.assign({}, ...indexes)
-        }
-    } as IDBActionRequest<LDBStoreInfo>
+    find(filter: (item: T) => boolean, option?: { sort?: string, order?: IDBCursorDirection }): LDBCursor<T>
 }
 
 function insertOne(objectStore: IDBObjectStore, value: any) {
@@ -119,9 +85,6 @@ async function find<T>(
     keys: IDBValidKey | IDBValidKey[] | IDBKeyRange,
     count?: number
 ) {
-    if (typeof count === "number") {
-        count++
-    }
     if (Array.isArray(keys)) {
         const result: T[] = []
         for (let i = 0; i < keys.length; i++) {

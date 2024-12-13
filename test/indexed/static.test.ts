@@ -1,5 +1,5 @@
 import { indexedDB } from "fake-indexeddb"
-import localIndexed from "../../indexed"
+import localIndexed from "../../src/indexed"
 
 const databaseName = "local-indexed"
 
@@ -7,8 +7,8 @@ describe("check localIndexed static apis", () => {
     it("check no indexeddb error", async () => {
         await expect(() => localIndexed.databases()).rejects.toThrow("indexedDB is not defined")
         await expect(() => localIndexed.databases()).rejects.toThrow(ReferenceError)
-        await expect(() => localIndexed.deleteDatabase(databaseName)).rejects.toThrow("indexedDB is not defined")
-        await expect(() => localIndexed.deleteDatabase(databaseName)).rejects.toThrow(ReferenceError)
+        await expect(() => localIndexed.delete(databaseName)).rejects.toThrow("indexedDB is not defined")
+        await expect(() => localIndexed.delete(databaseName)).rejects.toThrow(ReferenceError)
         await expect(() => localIndexed.exists(databaseName)).rejects.toThrow("indexedDB is not defined")
         await expect(() => localIndexed.exists(databaseName)).rejects.toThrow(ReferenceError)
         await expect(() => localIndexed.version(databaseName)).rejects.toThrow("indexedDB is not defined")
@@ -47,9 +47,9 @@ describe("check localIndexed static apis", () => {
             expect(await localIndexed.version(databaseName + `-${i}`)).toBe(i)
         }
     })
-    it("check deleteDatabase", async () => {
+    it("check delete", async () => {
         for (let i = 0; i < 10; i++) {
-            expect(await localIndexed.deleteDatabase(databaseName + `-${i}`)).toBe(true)
+            expect(await localIndexed.delete(databaseName + `-${i}`)).toBe(true)
         }
         expect(await localIndexed.databases()).toEqual([])
     })

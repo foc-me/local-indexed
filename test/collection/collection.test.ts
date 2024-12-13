@@ -1,5 +1,5 @@
 import "fake-indexeddb/auto"
-import localIndexed from "../../indexed"
+import localIndexed from "../../src/indexed"
 
 type Store = { id: number, value: number, odd?: "odd", re10: number }
 
@@ -7,6 +7,20 @@ const databaseName = "local-indexed"
 const storeName = "test-store"
 
 describe("check collection", () => {
+    it("check error", async () => {
+        const indexed = localIndexed(databaseName)
+        const store = indexed.collection(storeName)
+        expect(() => store.create()).toThrow(Error)
+        expect(() => store.create()).toThrow("collection.create requires upgrade")
+        expect(() => store.drop()).toThrow(Error)
+        expect(() => store.drop()).toThrow("collection.drop requires upgrade")
+        expect(() => store.alter()).toThrow(Error)
+        expect(() => store.alter()).toThrow("collection.alter requires upgrade")
+        expect(() => store.createIndex("odd")).toThrow(Error)
+        expect(() => store.createIndex("odd")).toThrow("collection.createIndex requires upgrade")
+        expect(() => store.dropIndex("odd")).toThrow(Error)
+        expect(() => store.dropIndex("odd")).toThrow("collection.dropIndex requires upgrade")
+    })
     it("check create", async () => {
         const indexed = localIndexed(databaseName)
         await indexed.upgrade(() => {

@@ -1,6 +1,6 @@
 import { indexedDB } from "fake-indexeddb"
-import { useIndexedDB, getIndexedDB, getDatabases, deleteDatabase } from "../../lib/indexed"
-import { getDatabase } from "../../lib/database"
+import { useIndexedDB, getIndexedDB, getDatabases, deleteDatabase } from "../../src/lib/indexed"
+import { getDatabase } from "../../src/lib/database"
 
 const databaseName = "local-indexed"
 

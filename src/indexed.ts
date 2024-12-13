@@ -106,7 +106,7 @@ async function existsDatabase(database: string) {
 }
 
 localIndexed.databases = getDatabases
-localIndexed.deleteDatabase = deleteDatabase
+localIndexed.delete = deleteDatabase
 localIndexed.exists = existsDatabase
 localIndexed.version = getVersion
 localIndexed.use = useIndexedDB

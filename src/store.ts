@@ -1,3 +1,4 @@
+import { type IDBActionRequest } from "./lib/request"
 import { LDBContext } from "./context"
 
 /**
@@ -16,6 +17,42 @@ export type LDBStoreOption = {
     keyPath?: string | string[] | null
     autoIncrement?: boolean
     indexes?: Record<string, LDBIndexOption>
+}
+
+/**
+ * create index option
+ */
+export type LDBIndexInfo = {
+    name: string
+    keyPath: string | string[]
+    unique: boolean
+    multiEntry: boolean
+}
+
+/**
+ * create object store option
+ */
+export type LDBStoreInfo = {
+    name: string
+    keyPath: string | string[] | null
+    autoIncrement: boolean
+    indexes: Record<string, LDBIndexInfo>
+}
+
+export function info(objectStore: IDBObjectStore) {
+    const { name, keyPath, autoIncrement, indexNames } = objectStore
+    const indexes: Record<string, LDBIndexInfo>[] = [...indexNames].map((name) => {
+        const { keyPath, unique, multiEntry } = objectStore.index(name)
+        return { [name]: { name, keyPath, unique, multiEntry } }
+    })
+    return {
+        result: {
+            name,
+            keyPath,
+            autoIncrement,
+            indexes: Object.assign({}, ...indexes)
+        }
+    } as IDBActionRequest<LDBStoreInfo>
 }
 
 /**

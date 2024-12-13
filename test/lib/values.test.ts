@@ -1,8 +1,8 @@
 import "fake-indexeddb/auto"
-import { getDatabases, deleteDatabase } from "../../lib/indexed"
-import { upgradeAction } from "../../lib/upgrade"
-import { getDatabase } from "../../lib/database"
-import { transactionAction } from "../../lib/transaction"
+import { getDatabases, deleteDatabase } from "../../src/lib/indexed"
+import { upgradeAction } from "../../src/lib/upgrade"
+import { getDatabase } from "../../src/lib/database"
+import { transactionAction } from "../../src/lib/transaction"
 
 type Store = {
     id: number
