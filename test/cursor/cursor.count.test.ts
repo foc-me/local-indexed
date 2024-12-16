@@ -43,10 +43,6 @@ describe("check cursor", () => {
             return item.id >= 51
         }).count()).toBe(50)
     })
-    it("check count direction", async () => {
-        const indexed = localIndexed(databaseName)
-        const store = indexed.collection<Store>(storeName)
-    })
     it("check count odd", async () => {
         const indexed = localIndexed(databaseName)
         const store = indexed.collection<Store>(storeName)

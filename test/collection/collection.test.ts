@@ -135,5 +135,6 @@ describe("check collection", () => {
         }
         expect((await store.find()).length).toBe(50)
         expect(await store.remove(IDBKeyRange.bound(51, 100)))
+        expect((await store.find()).length).toBe(0)
     })
 })

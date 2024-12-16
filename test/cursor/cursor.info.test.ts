@@ -10,13 +10,33 @@ describe("check cursor", () => {
         await indexed.upgrade(async () => {
             const store = indexed.collection(storeName)
             store.create({ keyPath: "id", autoIncrement: true })
+        })
+        expect(await indexed.version()).toBe(1)
+    })
+    it("check create info", async () => {
+        const indexed = localIndexed(databaseName)
+        const store = indexed.collection(storeName)
+        const info = await store.info()
+        expect(info.name).toBe(storeName)
+        expect(info.keyPath).toBe("id")
+        expect(info.autoIncrement).toBe(true)
+        expect(info.indexes).toEqual({})
+
+        const indexKeys = Object.keys(info.indexes)
+        expect(indexKeys).toEqual([])
+        expect(indexKeys.length).toBe(0)
+    })
+    it("check upgrade index", async () => {
+        const indexed = localIndexed(databaseName)
+        await indexed.upgrade(async () => {
+            const store = indexed.collection(storeName)
             store.createIndex("value", { unique: true })
             store.createIndex("odd")
             store.createIndex("re10")
         })
-        expect(await indexed.version()).toBe(1)
+        expect(await indexed.version()).toBe(2)
     })
-    it("check info", async () => {
+    it("check upgrade info", async () => {
         const indexed = localIndexed(databaseName)
         const store = indexed.collection(storeName)
         const info = await store.info()
