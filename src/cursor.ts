@@ -10,7 +10,8 @@ export interface LDBCursor<T> {
     count(): Promise<number>
 }
 
-export type LDBCursorOption = {
+export type LDBCursorOption<T> = {
+    filter: (item: T) => any
     index?: string
     query?: IDBValidKey | IDBKeyRange
     direction?: IDBCursorDirection
@@ -92,12 +93,8 @@ async function count(
     return { result } as IDBActionRequest<number>
 }
 
-export function cursor<T>(
-    store: string,
-    context: LDBContext,
-    filter: (item: T) => boolean,
-    option?: LDBCursorOption
-) {
+export function cursor<T>(store: string, context: LDBContext, option: LDBCursorOption<T>) {
+    const { filter } = option
     /**
      * get current objectStore from context
      * 
@@ -109,7 +106,7 @@ export function cursor<T>(
         mode: IDBTransactionMode,
         callback: (request: IDBRequest<IDBCursorWithValue | null>) => IDBActionRequest | Promise<IDBActionRequest>
     ) => {
-        const { index, query, direction } = option || {}
+        const { index, query, direction } = option
         const { getTransaction, makeTransaction } = context
         const current = getTransaction()
         if (current) {

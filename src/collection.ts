@@ -14,6 +14,22 @@ import {
     dropIndex
 } from "./store"
 
+type LDBCollectionCursor<T> = {
+    filter?: (item: T) => boolean
+    sort?: string
+    order?: IDBCursorDirection
+}
+
+const directions = ["next", "nextunique", "prev", "prevunique"]
+
+function isCollectionCursor<T>(target: any): target is LDBCollectionCursor<T> {
+    return typeof target === "object" && (
+        typeof target.filter === "function" ||
+        typeof target.sort === "string" ||
+        directions.includes(target.order)
+    )
+}
+
 export interface LDBCollection<T> {
     //
     info(): Promise<LDBStoreInfo>
@@ -31,10 +47,12 @@ export interface LDBCollection<T> {
     remove(key: IDBValidKey): Promise<void>
     remove(keys: IDBValidKey[]): Promise<void>
     remove(keyRnage: IDBKeyRange): Promise<void>
+    find(): Promise<T[]>
     find(keys: IDBValidKey[]): Promise<T[]>
-    find(key?: IDBValidKey | IDBKeyRange, count?: number): Promise<T[]>
+    find(key: IDBValidKey | IDBKeyRange, count?: number): Promise<T[]>
     //cursor
-    find(filter: (item: T) => boolean, option?: { sort?: string, order?: IDBCursorDirection }): LDBCursor<T>
+    find(filter: (item: T) => boolean): LDBCursor<T>
+    find(option: LDBCollectionCursor<T>): LDBCursor<T>
 }
 
 function insertOne(objectStore: IDBObjectStore, value: any) {
@@ -82,7 +100,7 @@ async function remove(
 
 async function find<T>(
     objectStore: IDBObjectStore,
-    keys: IDBValidKey | IDBValidKey[] | IDBKeyRange,
+    keys?: IDBValidKey | IDBValidKey[] | IDBKeyRange,
     count?: number
 ) {
     if (Array.isArray(keys)) {
@@ -157,15 +175,18 @@ export function collection<T>(context: LDBContext, store: string) {
             })
         },
         find: (
-            keys: IDBValidKey | IDBValidKey[] | IDBKeyRange | ((item: T) => boolean),
-            option?: number | { sort?: string, order?: IDBCursorDirection }
+            keys?: IDBValidKey | IDBValidKey[] | IDBKeyRange | ((item: T) => boolean) | LDBCollectionCursor<T>,
+            count?: number
         ) => {
             if (typeof keys === "function") {
-                const { sort, order } = option as { sort?: string, order?: IDBCursorDirection } || {}
-                return cursor(store, context, keys, { index: sort, direction: order })
+                return cursor(store, context, { filter: keys })
+            }
+            if (isCollectionCursor<T>(keys)) {
+                const { filter = () => true, sort, order } = keys
+                return cursor(store, context, { filter, index: sort, direction: order })
             }
             return makeTransactionAction("readonly", (objectStore) => {
-                return find(objectStore, keys, option as number)
+                return find(objectStore, keys, count)
             })
         }
     } as LDBCollection<T>

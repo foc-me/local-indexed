@@ -46,28 +46,26 @@ describe("check cursor", () => {
     it("check count odd", async () => {
         const indexed = localIndexed(databaseName)
         const store = indexed.collection<Store>(storeName)
-        expect(await store.find(() => true, { sort: "odd" }).count()).toBe(50)
-        expect(await store.find((item) => item.id > 50, { sort: "odd" }).count()).toBe(25)
+        expect(await store.find({ sort: "odd" }).count()).toBe(50)
+        expect(await store.find({ filter: (item) => item.id > 50, sort: "odd" }).count()).toBe(25)
         for (let i = 0; i < 5; i++) {
-            expect(await store.find((item) => {
-                return item.re10 ===  i * 2
-            }, { sort: "odd" }).count()).toBe(10)
+            expect(await store.find({ filter: (item) => item.re10 ===  i * 2, sort: "odd" }).count()).toBe(10)
         }
     })
     it("check count re10", async () => {
         const indexed = localIndexed(databaseName)
         const store = indexed.collection<Store>(storeName)
-        expect(await store.find(() => true, { sort: "re10" }).count()).toBe(100)
-        expect(await store.find(() => true, { sort: "re10", order: "next" }).count()).toBe(100)
-        expect(await store.find(() => true, { sort: "re10", order: "prev" }).count()).toBe(100)
-        expect(await store.find(() => true, { sort: "re10", order: "nextunique" }).count()).toBe(10)
-        expect(await store.find(() => true, { sort: "re10", order: "prevunique" }).count()).toBe(10)
+        expect(await store.find({ sort: "re10" }).count()).toBe(100)
+        expect(await store.find({ sort: "re10", order: "next" }).count()).toBe(100)
+        expect(await store.find({ sort: "re10", order: "prev" }).count()).toBe(100)
+        expect(await store.find({ sort: "re10", order: "nextunique" }).count()).toBe(10)
+        expect(await store.find({ sort: "re10", order: "prevunique" }).count()).toBe(10)
         for (let i = 0; i < 10; i++) {
-            expect(await store.find((item) => item.re10 === i, { sort: "re10" }).count()).toBe(10)
-            expect(await store.find((item) => item.re10 === i, { sort: "re10", order: "next" }).count()).toBe(10)
-            expect(await store.find((item) => item.re10 === i, { sort: "re10", order: "prev" }).count()).toBe(10)
-            expect(await store.find((item) => item.re10 === i, { sort: "re10", order: "nextunique" }).count()).toBe(1)
-            expect(await store.find((item) => item.re10 === i, { sort: "re10", order: "prevunique" }).count()).toBe(1)
+            expect(await store.find({ filter: (item) => item.re10 === i, sort: "re10" }).count()).toBe(10)
+            expect(await store.find({ filter: (item) => item.re10 === i, sort: "re10", order: "next" }).count()).toBe(10)
+            expect(await store.find({ filter: (item) => item.re10 === i, sort: "re10", order: "prev" }).count()).toBe(10)
+            expect(await store.find({ filter: (item) => item.re10 === i, sort: "re10", order: "nextunique" }).count()).toBe(1)
+            expect(await store.find({ filter: (item) => item.re10 === i, sort: "re10", order: "prevunique" }).count()).toBe(1)
         }
     })
 })
