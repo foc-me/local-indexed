@@ -90,9 +90,7 @@ describe("check indexed upgrade collection", () => {
             })
             const ids = await store.insert(values)
             expect(ids.length).toBe(50)
-            ids.forEach((id, index) => {
-                expect(id).toBe(index + 50 + 1)
-            })
+            ids.forEach((id, index) => expect(id).toBe(index + 50 + 1))
         })).toBe(undefined)
         expect(await indexed.version()).toBe(4)
     })
@@ -163,9 +161,7 @@ describe("check indexed upgrade collection", () => {
             })
             const ids = await store.update(items)
             expect(ids.length).toBe(50)
-            ids.forEach((id, index) => {
-                expect(id).toBe(index + 1 + 50)
-            })
+            ids.forEach((id, index) => expect(id).toBe(index + 1 + 50))
             indexed.abort()
         })).toBe(undefined)
         expect(await indexed.version()).toBe(5)
@@ -194,9 +190,7 @@ describe("check indexed upgrade collection", () => {
             })
             const ids = await store.update(items)
             expect(ids.length).toBe(50)
-            ids.forEach((id, index) => {
-                expect(id).toBe(index + 1 + 50)
-            })
+            ids.forEach((id, index) => expect(id).toBe(index + 1 + 50))
         })).toBe(undefined)
         expect(await indexed.version()).toBe(6)
 

@@ -7,21 +7,7 @@ const databaseName = "local-indexed"
 const storeName = "test-store"
 
 describe("check indexed transaction collection", () => {
-    it("check error", async () => {
-        const indexed = localIndexed(databaseName)
-        const store = indexed.collection(storeName)
-        expect(() => store.create()).toThrow(Error)
-        expect(() => store.create()).toThrow("collection.create requires upgrade")
-        expect(() => store.drop()).toThrow(Error)
-        expect(() => store.drop()).toThrow("collection.drop requires upgrade")
-        expect(() => store.alter()).toThrow(Error)
-        expect(() => store.alter()).toThrow("collection.alter requires upgrade")
-        expect(() => store.createIndex("odd")).toThrow(Error)
-        expect(() => store.createIndex("odd")).toThrow("collection.createIndex requires upgrade")
-        expect(() => store.dropIndex("odd")).toThrow(Error)
-        expect(() => store.dropIndex("odd")).toThrow("collection.dropIndex requires upgrade")
-    })
-    it("check upgrade", async () => {
+    it("check create", async () => {
         const indexed = localIndexed(databaseName)
         const store = indexed.collection(storeName)
         expect(await indexed.upgrade(async () => {
@@ -33,6 +19,22 @@ describe("check indexed transaction collection", () => {
                     re10: { unique: false }
                 }
             })).toBe(true)
+        })).toBe(undefined)
+    })
+    it("check error", async () => {
+        const indexed = localIndexed(databaseName)
+        const store = indexed.collection(storeName)
+        expect(await indexed.transaction(async () => {
+            expect(() => store.create()).toThrow(Error)
+            expect(() => store.create()).toThrow("collection.create requires upgrade")
+            expect(() => store.drop()).toThrow(Error)
+            expect(() => store.drop()).toThrow("collection.drop requires upgrade")
+            expect(() => store.alter()).toThrow(Error)
+            expect(() => store.alter()).toThrow("collection.alter requires upgrade")
+            expect(() => store.createIndex("odd")).toThrow(Error)
+            expect(() => store.createIndex("odd")).toThrow("collection.createIndex requires upgrade")
+            expect(() => store.dropIndex("odd")).toThrow(Error)
+            expect(() => store.dropIndex("odd")).toThrow("collection.dropIndex requires upgrade")
         })).toBe(undefined)
     })
     it("check insert", async () => {
@@ -52,9 +54,7 @@ describe("check indexed transaction collection", () => {
             })
             const ids = await store.insert(values)
             expect(ids.length).toBe(50)
-            ids.forEach((id, index) => {
-                expect(id).toBe(index + 50 + 1)
-            })
+            ids.forEach((id, index) => expect(id).toBe(index + 50 + 1))
         })).toBe(undefined)
     })
     it("check find", async () => {
@@ -123,9 +123,7 @@ describe("check indexed transaction collection", () => {
                 })
                 const ids = await store.update(items)
                 expect(ids.length).toBe(50)
-                ids.forEach((id, index) => {
-                    expect(id).toBe(index + 1 + 50)
-                })
+                ids.forEach((id, index) => expect(id).toBe(index + 1 + 50))
                 indexed.abort()
             })).toBe(undefined)
     
@@ -153,9 +151,7 @@ describe("check indexed transaction collection", () => {
             })
             const ids = await store.update(items)
             expect(ids.length).toBe(50)
-            ids.forEach((id, index) => {
-                expect(id).toBe(index + 1 + 50)
-            })
+            ids.forEach((id, index) => expect(id).toBe(index + 1 + 50))
         })).toBe(undefined)
 
         const items = await store.find()
