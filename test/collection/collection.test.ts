@@ -6,7 +6,7 @@ type Store = { id: number, value: number, odd?: "odd", re10: number }
 const databaseName = "local-indexed"
 const storeName = "test-store"
 
-describe("check collection", () => {
+describe("check indexed collection", () => {
     it("check error", async () => {
         const indexed = localIndexed(databaseName)
         const store = indexed.collection(storeName)
@@ -67,6 +67,18 @@ describe("check collection", () => {
             expect(item.odd).toBe(index % 2 === 0 ? undefined : "odd")
             expect(item.re10).toBe(re10 === 10 ? 0 : re10)
         })
+        const keys = new Array(100).fill(undefined).map((item, index) => index + 1)
+        const listItems = await store.find(keys)
+        expect(listItems.length).toBe(100)
+        listItems.forEach((item, index) => {
+            const re10 = index % 10 + 1
+            expect(item.id).toBe(index + 1)
+            expect(item.value).toBe(index + 1)
+            expect(item.odd).toBe(index % 2 === 0 ? undefined : "odd")
+            expect(item.re10).toBe(re10 === 10 ? 0 : re10)
+        })
+        const countListItems = await store.find(keys, 50)
+        expect(countListItems.length).toBe(50)
         for (let i = 0; i < 100; i++) {
             const items = await store.find(i + 1)
             expect(items.length).toBe(1)
@@ -76,6 +88,7 @@ describe("check collection", () => {
             expect(item.value).toBe(i + 1)
             expect(item.odd).toBe(i % 2 === 0 ? undefined : "odd")
             expect(item.re10).toBe(re10 === 10 ? 0 : re10)
+            expect((await store.find(i + 1, 10)).length).toBe(1)
         }
         for (let i = 0; i < 10; i++) {
             const start = i * 10 + 1
@@ -89,6 +102,7 @@ describe("check collection", () => {
                 expect(item.odd).toBe(index % 2 === 0 ? undefined : "odd")
                 expect(item.re10).toBe(re10 === 10 ? 0 : re10)
             })
+            expect((await store.find(range, 5)).length).toBe(5)
         }
     })
     it("check update", async () => {

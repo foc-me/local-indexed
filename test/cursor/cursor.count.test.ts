@@ -6,13 +6,12 @@ type Store = { id: number, value: number, odd?: "odd", re10: number }
 const databaseName = "local-indexed"
 const storeName = "test-store"
 
-describe("check cursor", () => {
+describe("check indexed cursor count", () => {
     it("check create", async () => {
         const indexed = localIndexed(databaseName)
         await indexed.upgrade(async () => {
             const store = indexed.collection(storeName)
             store.create({ keyPath: "id", autoIncrement: true })
-            store.createIndex("value", { unique: true })
             store.createIndex("odd")
             store.createIndex("re10")
             await store.insert(new Array(100).fill(undefined).map((item, index) => {

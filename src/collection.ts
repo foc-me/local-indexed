@@ -23,7 +23,7 @@ type LDBCollectionCursor<T> = {
 const directions = ["next", "nextunique", "prev", "prevunique"]
 
 function isCollectionCursor<T>(target: any): target is LDBCollectionCursor<T> {
-    return typeof target === "object" && (
+    return Object.prototype.toString.call(target) === "[object Object]" && (
         typeof target.filter === "function" ||
         typeof target.sort === "string" ||
         directions.includes(target.order)

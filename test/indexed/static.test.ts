@@ -3,7 +3,7 @@ import localIndexed from "../../src/indexed"
 
 const databaseName = "local-indexed"
 
-describe("check localIndexed static apis", () => {
+describe("check indexed static apis", () => {
     it("check no indexeddb error", async () => {
         await expect(() => localIndexed.databases()).rejects.toThrow("indexedDB is not defined")
         await expect(() => localIndexed.databases()).rejects.toThrow(ReferenceError)

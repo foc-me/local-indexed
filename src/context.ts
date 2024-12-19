@@ -74,7 +74,7 @@ export function makeContext(database: string, indexedDB?: IDBFactory, transactio
             if (current.value) {
                 current.value.abort()
             } else {
-                throw new Error("abort() requires transaction or upgrade")
+                throw new Error("localIndexed.abort requires transaction or upgrade")
             }
         }
     } as LDBContext

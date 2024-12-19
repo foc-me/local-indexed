@@ -4,7 +4,7 @@ import localIndexed from "../../src/indexed"
 const databaseName = "local-indexed"
 const storeName = "test-store"
 
-describe("check cursor", () => {
+describe("check indexed cursor info", () => {
     it("check create", async () => {
         const indexed = localIndexed(databaseName)
         await indexed.upgrade(async () => {

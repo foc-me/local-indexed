@@ -26,7 +26,7 @@ type Store = {
 const databaseName = "local-indexed"
 const storeName = "test-store"
 
-describe("check upgrade", () => {
+describe("check indexeddb values", () => {
     it("check empty indexed", async () => {
         expect((await getDatabases()).length).toBe(0)
     })

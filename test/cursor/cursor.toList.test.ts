@@ -6,13 +6,12 @@ type Store = { id: number, value: number, odd?: "odd", re10: number }
 const databaseName = "local-indexed"
 const storeName = "test-store"
 
-describe("create indexed", () => {
+describe("create cursor toList", () => {
     it("check create", async () => {
         const indexed = localIndexed(databaseName)
         await indexed.upgrade(async () => {
             const store = indexed.collection(storeName)
             store.create({ keyPath: "id", autoIncrement: true })
-            store.createIndex("value", { unique: true })
             store.createIndex("odd")
             store.createIndex("re10")
             await store.insert(new Array(100).fill(undefined).map((item, index) => {
@@ -25,7 +24,7 @@ describe("create indexed", () => {
     })
 })
 
-describe("check toList", () => {
+describe("check indexed cursor toList", () => {
     it("check toList default", async () => {
         const indexed = localIndexed(databaseName)
         const store = indexed.collection<Store>(storeName)
@@ -153,7 +152,7 @@ describe("check toList", () => {
     })
 })
 
-describe("check odd toList", () => {
+describe("check indexed odd cursor toList", () => {
     it("check toList", async () => {
         const indexed = localIndexed(databaseName)
         const store = indexed.collection<Store>(storeName)
@@ -226,7 +225,7 @@ describe("check odd toList", () => {
     })
 })
 
-describe("check re10 toList", () => {
+describe("check indexed re10 cursor toList", () => {
     it("check toList", async () => {
         const indexed = localIndexed(databaseName)
         const store = indexed.collection<Store>(storeName)
@@ -312,8 +311,23 @@ describe("check re10 toList", () => {
             })
         }
     })
-    // it("check toList direction limit", async () => {
-    //     const indexed = localIndexed(databaseName)
-    //     const store = indexed.collection<Store>(storeName)
-    // })
+    it("check toList direction limit", async () => {
+        const indexed = localIndexed(databaseName)
+        const store = indexed.collection<Store>(storeName)
+        expect((await store.find({ sort: "re10", order: "nextunique" }).toList(-1)).length).toBe(0)
+        expect((await store.find({ sort: "re10", order: "prevunique" }).toList(-1)).length).toBe(0)
+        for (let i = 0; i < 10; i++) {
+            expect((await store.find({ sort: "re10", order: "prev" }).toList(i * 10)).length).toBe(i * 10)
+            expect((await store.find({ sort: "re10", order: "prev" }).toList(undefined, i * 10)).length).toBe(100 - i * 10)
+        }
+        for (let i = 0; i < 10; i++) {
+            const count = (i + 1) * 5
+            expect((await store.find({ filter: item => item.odd === "odd", sort: "re10", order: "prev" }).toList(count)).length).toBe(count)
+            expect((await store.find({ filter: item => item.odd === "odd", sort: "re10", order: "prev" }).toList(undefined, count)).length).toBe(50 - count)
+        }
+        for (let i = 0; i < 10; i++) {
+            expect((await store.find({ filter: item => item.re10 === i, sort: "re10", order: "prev" }).toList(20)).length).toBe(10)
+            expect((await store.find({ filter: item => item.re10 === i, sort: "re10", order: "prev" }).toList(undefined, 20)).length).toBe(0)
+        }
+    })
 })

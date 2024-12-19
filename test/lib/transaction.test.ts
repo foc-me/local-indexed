@@ -10,7 +10,7 @@ type Store = { id: number, value: number, odd?: "odd", re10: number }
 const databaseName = "local-indexed"
 const storeName = "test-store"
 
-describe("check transaction action", () => {
+describe("check transaction", () => {
     it("check empty indexed", async () => {
         expect((await getDatabases()).length).toBe(0)
     })

@@ -11,7 +11,7 @@ type Store = { id: number, value: number, odd?: "odd", re10: number }
 const databaseName = "local-indexed"
 const storeName = "test-store"
 
-describe("check cursor", () => {
+describe("check index cursor", () => {
     it("check upgrade", async () => {
         await upgradeAction(databaseName, 1, (event) => {
             const { transaction } = event
