@@ -2,15 +2,59 @@
 
 a lib for indexeddb
 
+# install
+
+```shell
+npm instal @focme/local-indexed --save-dev
+```
+
+# usage
+
+```javascript
+import localIndexed from "@focme/local-indexed"
+
+// get database
+const database = localIndexed("database-name")
+// get a collection
+const store = database.collection("store-name")
+
+// create database
+await database.upgrade(async () => {
+    // create store
+    store.create({ keyPath: "id", autoIncreament: true })
+    // create index
+    store.createIndex("name", { unique: false })
+    // init values
+    await store.insert([{ ... }])
+})
+
+// get values
+const items = await store.find() // get all values
+// update value
+await store.update({ id: 1, ... }) // update value witch id is 1
+// delete value
+await store.remove(1) // delete value witch id is 1
+
+// use transaction
+await database.transaction(async () => {
+    // get cursor
+    const cursor = store.find(item => item.id > 20)
+    // update values
+    cursor.update(item => { ... }) // update values witch id larger than 20
+    // delete values
+    cursor.remove() // delete values witch id larger than 20
+})
+```
+
 # APIs
 
 ## static apis
 
+* localIndexed.use(indexedDB: IDBFactory): void
 * localIndexed.databases(): Promise\<IDBDatabaseInfo[]>
 * localIndexed.deleteDatabase(database: string, indexedDB?: IDBFactory): Promise\<boolean>
 * localIndexed.exists(database: string): Promise\<boolean>
 * localIndexed.version(database: string): Promise\<number>
-* localIndexed.use(indexedDB: IDBFactory): void
 
 ## LDBIndexed
 
@@ -22,24 +66,24 @@ a lib for indexeddb
 
 * LDBIndexed.version(): Promise\<number>
 * LDBIndexed.stores(): Promise\<string[]>
-* LDBIndexed.close(): void
 
 ### transaction apis
 
 * LDBIndexed.upgrade(callback: (event: LDBUpgradeEvent) => void | Promise<void>): Promise<void>
 * LDBIndexed.upgrade(version: number, callback: (event: LDBUpgradeEvent) => void | Promise<void>): Promise<void>
 * LDBIndexed.transaction(callback: () => void | Promise<void>): Promise<void>
+* LDBIndexed.close(): void
 * LDBIndexed.abort(): void
 
 ### collection apis
 
 * LDBIndexed.collection\<T>(store: string): LDBCollection\<T>
 
-### storage apis
-
-* LDBIndexed.storage\<T>(store: string): LDBStorage\<T>
-
 ## LDBCollection\<T>
+
+### detial apis
+
+* LDBCollection\<T>.info(): LDBCollectionInfo
 
 ### create store apis
 
@@ -71,61 +115,3 @@ a lib for indexeddb
 * LDBCursor\<T>.remove(): Promise\<number>
 * LDBCursor\<T>.toList(limit?: number, skip?: number): Promise\<T[]>
 * LDBCursor\<T>.count(): Promise\<number>
-
-## LDBStorage\<T>
-
-### create store apis
-
-* LDBStorage\<T>.create(option?: LDBStoreOption): boolean
-* LDBStorage\<T>.drop(): boolean
-* LDBStorage\<T>.alter(option?: LDBStoreOption): boolean
-* LDBStorage\<T>.createIndex(name: string, option?: LDBIndexOption): boolean
-* LDBStorage\<T>.dropIndex(name: string): boolean
-
-### storage apis
-
-* LDBStorage\<T>.getItem(key: IDBValidKey): Promise\<T | undefined>
-* LDBStorage\<T>.getItem(keyRange: IDBKeyRange): Promise\<T | undefined>
-* LDBStorage\<T>.getItem(filter: (item: T) => boolean, option?: IDBCursorOption): Promise\<T | undefined>
-* LDBStorage\<T>.setItem\<K extends IDBValidKey>(value: any): Promise\<K>
-* LDBStorage\<T>.setItem\<K extends IDBValidKey>(values: any[]): Promise\<K[]>
-* LDBStorage\<T>.setItem\<K extends IDBValidKey>(filter: (item: T) => any, option?: IDBCursorOption): Promise\<K[]>
-* LDBStorage\<T>.removeItem(key: IDBValidKey): Promise\<void>
-* LDBStorage\<T>.removeItem(filter: (item: T) => boolean, option?: IDBCursorOption): Promise\<number>
-* LDBStorage\<T>.clear(key?: IDBValidKey | IDBKeyRange): Promise\<void>
-* LDBStorage\<T>.clear(filter: (item: T) => boolean, option?: IDBCursorOption): Promise\<number>
-* LDBStorage\<T>.length(key?: IDBValidKey | IDBKeyRange): Promise\<number>
-* LDBStorage\<T>.length(filter: (item: T) => boolean, option?: IDBCursorOption): Promise\<number>
-* LDBStorage\<T>.values(key?: IDBValidKey | IDBKeyRange): Promise\<T[]>
-* LDBStorage\<T>.values(filter: (item: T) => boolean, option?: IDBCursorOption): Promise\<T[]>
-
-### storage index apis
-
-* LDBStorage\<T>.getIndexes(): Promise\<LDBIndexDetials>
-* LDBStorage\<T>.index(name: string): LDBIndexStorage
-
-### storage key apis
-
-* LDBStorage\<T>.getKey\<K extends IDBKeyRange>(key?: IDBValidKey | IDBKeyRange): Promise\<K>
-* LDBStorage\<T>.getKey\<K extends IDBKeyRange>(filter: (key: K) => boolean, option?: IDBCursorOption): Promise\<K>
-* LDBStorage\<T>.keys\<K extends IDBKeyRange>(key?: IDBValidKey | IDBKeyRange): Promise\<K[]>
-* LDBStorage\<T>.keys\<K extends IDBKeyRange>(filter: (key: K) => boolean, option?: IDBCursorOption): Promise\<K[]>
-
-## LDBIndexStorage\<T>
-
-### index storage apis
-
-* LDBIndexStorage\<T>.setItem\<K extends IDBValidKey>(filter: (item: T) => any, option?: IDBCursorOption): Promise\<K[]>
-* LDBIndexStorage\<T>.getItem(filter: (item: T) => boolean, option?: IDBCursorOption): Promise\<T | undefined>
-* LDBIndexStorage\<T>.removeItem(filter: (item: T) => boolean, option?: IDBCursorOption): Promise\<number>
-* LDBIndexStorage\<T>.length(key?: IDBValidKey | IDBKeyRange): Promise\<number>
-* LDBIndexStorage\<T>.length(filter: (item: T) => boolean, option?: IDBCursorOption): Promise\<number>
-* LDBIndexStorage\<T>.values(key?: IDBValidKey | IDBKeyRange): Promise\<T[]>
-* LDBIndexStorage\<T>.values(filter: (item: T) => boolean, option?: IDBCursorOption): Promise\<T[]>
-
-### index storage key apis
-
-* LDBStorage\<T>.getKey\<K extends IDBKeyRange>(key?: IDBValidKey | IDBKeyRange): Promise\<K>
-* LDBStorage\<T>.getKey\<K extends IDBKeyRange>(filter: (key: K) => boolean, option?: IDBCursorOption): Promise\<K>
-* LDBStorage\<T>.keys\<K extends IDBKeyRange>(key?: IDBValidKey | IDBKeyRange): Promise\<K[]>
-* LDBStorage\<T>.keys\<K extends IDBKeyRange>(filter: (key: K) => boolean, option?: IDBCursorOption): Promise\<K[]>
