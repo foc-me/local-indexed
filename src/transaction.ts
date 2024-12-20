@@ -7,13 +7,15 @@ import { type LDBContext } from "./context"
  * @param context database context
  * @param callback transaction callback
  */
-export async function transaction(context: LDBContext, callback: () => void) {
+export async function transaction(context: LDBContext, callback?: () => void) {
     const database = await context.makeDatabase()
     const stores = [...database.objectStoreNames]
     const transaction = database.transaction(stores, "readwrite")
     context.setTransaction(transaction)
     await transactionAction(transaction, () => {
-        return callback()
+        if (typeof callback === "function") {
+            return callback()
+        }
     }).finally(() => {
         context.setTransaction()
     })

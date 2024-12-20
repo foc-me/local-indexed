@@ -30,10 +30,10 @@ export function getIndexedDB(indexedDB?: IDBFactory) {
 }
 
 /**
- * get database infos
+ * get database info
  * 
  * @param indexedDB indexedDB factory engine
- * @returns promise databases info
+ * @returns promise database info
  */
 export async function getDatabases(indexedDB?: IDBFactory) {
     const indexed = getIndexedDB(indexedDB)
@@ -52,8 +52,9 @@ export function deleteDatabase(database: string, indexedDB?: IDBFactory): Promis
         try {
             const indexed = getIndexedDB(indexedDB)
             const request = indexed.deleteDatabase(database)
-            request.addEventListener("success", () => {
-                resolve(true)
+            request.addEventListener("success", async () => {
+                const info = await getDatabases()
+                resolve(!!info.find(item => item === database))
             })
             request.addEventListener("error", error => {
                 reject(error)

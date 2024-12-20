@@ -5,15 +5,52 @@ import { type LDBContext, makeContext } from "./context"
 import { transaction } from "./transaction"
 import { type LDBUpgradeEvent, upgrade } from "./upgrade"
 
+/**
+ * indexed
+ */
 interface LDBIndexed {
+    /**
+     * database name
+     */
     name: string,
+    /**
+     * get database version
+     */
     version(): Promise<number>
-    upgrade(callback: (event: LDBUpgradeEvent) => void | Promise<void>): Promise<void>
-    upgrade(version: number, callback: (event: LDBUpgradeEvent) => void | Promise<void>): Promise<void>
+    /**
+     * get database store names
+     */
     stores(): Promise<string[]>
+    /**
+     * upgrade database
+     * 
+     * @param callback upgrade callback
+     */
+    upgrade(callback?: (event: LDBUpgradeEvent) => void | Promise<void>): Promise<void>
+    /**
+     * upgrade database to specified version
+     * 
+     * @param version upgrade version
+     * @param callback upgrade callback
+     */
+    upgrade(version: number, callback?: (event: LDBUpgradeEvent) => void | Promise<void>): Promise<void>
+    /**
+     * create store collection
+     * @param store store name
+     */
     collection<T extends object>(store: string): LDBCollection<T>
-    transaction(callback: () => void | Promise<void>): Promise<void>
+    /**
+     * create transaction action
+     * @param callback transaction callback
+     */
+    transaction(callback?: () => void | Promise<void>): Promise<void>
+    /**
+     * abort global transaction
+     */
     abort(): void
+    /**
+     * abort global transaction and close database connection
+     */
     close(): void
 }
 
@@ -21,10 +58,11 @@ interface LDBIndexed {
  * get database info
  * 
  * @param database database name
+ * @param indexedDB indexedDB factory
  * @returns database info
  */
-async function getDatabaseInfo(database: string) {
-    const databases = await getDatabases()
+async function getDatabaseInfo(database: string, indexedDB?: IDBFactory) {
+    const databases = await getDatabases(indexedDB)
     return databases.find(item => item.name === database)
 }
 
@@ -32,10 +70,11 @@ async function getDatabaseInfo(database: string) {
  * get database version
  * 
  * @param database database name
+ * @param indexedDB indexedDB factory
  * @returns database version
  */
-async function getVersion(database: string) {
-    const target = await getDatabaseInfo(database)
+async function getVersion(database: string, indexedDB?: IDBFactory) {
+    const target = await getDatabaseInfo(database, indexedDB)
     return target && target.version ? target.version : 0
 }
 
@@ -61,15 +100,14 @@ async function stores(database: string) {
  */
 async function upgradeWrapper(
     context: LDBContext,
-    version: number | ((event: LDBUpgradeEvent) => void | Promise<void>),
+    version?: number | ((event: LDBUpgradeEvent) => void | Promise<void>),
     callback?: (event: LDBUpgradeEvent) => void | Promise<void>
 ) {
     if (typeof version === "function") {
         callback = version
-        version = await getVersion(context.database) + 1
     }
-    if (typeof callback !== "function") {
-        throw new ReferenceError("callback is not a function")
+    if (typeof version !== "number") {
+        version = await getVersion(context.database) + 1
     }
     return upgrade(context, version, callback)
 }
@@ -86,8 +124,8 @@ function localIndexed(database: string, indexedDB?: IDBFactory) {
     return {
         name: database,
         version: () => getVersion(database),
-        upgrade: (version, callback) => upgradeWrapper(context, version, callback),
         stores: () => stores(database),
+        upgrade: (version, callback) => upgradeWrapper(context, version, callback),
         collection: (store) => collection(context, store),
         transaction: (callback) => transaction(context, callback),
         abort: () => { context.abort() },
@@ -99,16 +137,32 @@ function localIndexed(database: string, indexedDB?: IDBFactory) {
  * check database exists
  * 
  * @param database database name
+ * @param indexedDB indexedDB factory
  * @returns true if database exists
  */
-async function existsDatabase(database: string) {
-    return !!(await getDatabaseInfo(database))
+async function existsDatabase(database: string, indexedDB?: IDBFactory) {
+    return !!(await getDatabaseInfo(database, indexedDB))
 }
 
+/**
+ * get databases
+ */
 localIndexed.databases = getDatabases
+/**
+ * delete database
+ */
 localIndexed.delete = deleteDatabase
+/**
+ * database exists
+ */
 localIndexed.exists = existsDatabase
+/**
+ * get specified database version
+ */
 localIndexed.version = getVersion
+/**
+ * use indexeddb factory
+ */
 localIndexed.use = useIndexedDB
 
 export default localIndexed

@@ -1,7 +1,7 @@
 import { getDatabase } from "./lib/database"
 
 /**
- * indexedDB context
+ * indexed context
  */
 export interface LDBContext {
     /**
@@ -17,11 +17,11 @@ export interface LDBContext {
      */
     makeDatabase(): Promise<IDBDatabase>
     /**
-     * get the cached transaction
+     * get global transaction
      */
     getTransaction(): IDBTransaction | undefined
     /**
-     * cache the transaction that other functions could use it
+     * set global transaction
      * 
      * @param target transaction
      */
@@ -39,23 +39,51 @@ export interface LDBContext {
         option?: IDBTransactionOptions
     ): Promise<IDBTransaction>
     /**
-     * abort the transaction
+     * abort transaction
      */
     abort(): void
 }
 
-export function makeContext(database: string, indexedDB?: IDBFactory, transaction?: IDBTransaction) {
-    const current ={ value: transaction }
+/**
+ * create indexed context
+ * 
+ * @param database database name
+ * @param indexedDB indexeddb factory
+ * @returns context
+ */
+export function makeContext(database: string, indexedDB?: IDBFactory) {
+    /**
+     * global transaction
+     */
+    const current: { value?: IDBTransaction } = { value: undefined }
 
+    /**
+     * get database
+     * 
+     * @returns database
+     */
     const makeDatabase = async () => {
         return await getDatabase(database, indexedDB)
     }
 
+    /**
+     * set global transaction
+     * 
+     * @param transaction transaction
+     */
     const setTransaction = (transaction?: IDBTransaction) => {
         if (current.value) current.value.db.close()
         current.value = transaction
     }
 
+    /**
+     * create transaction
+     * 
+     * @param store store name
+     * @param mode transaction mode
+     * @param option transaction option
+     * @returns transaction
+     */
     const makeTransaction = async (store: string | string[], mode?: IDBTransactionMode, option?: IDBTransactionOptions) => {
         const database = await makeDatabase()
         const transaction = database.transaction(store, mode, option)

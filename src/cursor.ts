@@ -3,20 +3,73 @@ import { transactionAction } from "./lib/transaction"
 import { type IDBActionRequest, requestAction } from "./lib/request"
 import { type LDBContext } from "./context"
 
+/**
+ * cursor
+ */
 export interface LDBCursor<T> {
+    /**
+     * update values
+     * 
+     * @param formatter value formatter
+     */
     update<K extends IDBValidKey>(formatter: (item: T) => any): Promise<K[]>
+    /**
+     * delete values
+     */
     remove(): Promise<number>
+    /**
+     * get values
+     * 
+     * @param limit quantity limit
+     * @param skip quantity skip
+     */
     toList(limit?: number, skip?: number): Promise<T[]>
+    /**
+     * quantity number
+     */
     count(): Promise<number>
 }
 
+/**
+ * create cursor option
+ */
 export type LDBCursorOption<T> = {
+    /**
+     * cursor filter
+     * 
+     * return true to match current value
+     * 
+     * @param item value
+     * @returns any
+     */
     filter: (item: T) => any
+    /**
+     * index name
+     * 
+     * detemine use store cursor or index cursor
+     * 
+     * use store cursor if index name not exists
+     */
     index?: string
+    /**
+     * cursor query
+     */
     query?: IDBValidKey | IDBKeyRange
+    /**
+     * cursor direction
+     */
     direction?: IDBCursorDirection
 }
 
+/**
+ * get values
+ * 
+ * @param request open cursor request
+ * @param filter cursor filter
+ * @param limit quantity limit
+ * @param skip quantity skip
+ * @returns request like
+ */
 async function toList<T>(
     request: IDBRequest<IDBCursorWithValue | null>,
     filter: (item: T) => any,
@@ -44,6 +97,13 @@ async function toList<T>(
     return { result } as IDBActionRequest<T[]>
 }
 
+/**
+ * delete values
+ * 
+ * @param request open cursor request
+ * @param filter cursor filter
+ * @returns request like
+ */
 async function remove(
     request: IDBRequest<IDBCursorWithValue | null>,
     filter: (item: any) => any
@@ -59,6 +119,16 @@ async function remove(
     return { result } as IDBActionRequest<number>
 }
 
+/**
+ * update valeus
+ * 
+ * update current value if the return value of formatter is not undefined or null
+ * 
+ * @param request open cursor request
+ * @param filter cursor filter
+ * @param formatter value formatter
+ * @returns request like
+ */
 async function update<K extends IDBValidKey>(
     request: IDBRequest<IDBCursorWithValue | null>,
     filter: (item: any) => any,
@@ -79,6 +149,13 @@ async function update<K extends IDBValidKey>(
     return { result } as IDBActionRequest<K[]>
 }
 
+/**
+ * get quantity number
+ * 
+ * @param request open cursor request
+ * @param filter cursor filter
+ * @returns request like
+ */
 async function count(
     request: IDBRequest<IDBCursorWithValue | null>,
     filter: (item: any) => any
@@ -93,6 +170,14 @@ async function count(
     return { result } as IDBActionRequest<number>
 }
 
+/**
+ * create cursor
+ * 
+ * @param store store name
+ * @param context indexed context
+ * @param option cursor option
+ * @returns cursor
+ */
 export function cursor<T>(store: string, context: LDBContext, option: LDBCursorOption<T>) {
     const { filter } = option
     /**
@@ -108,6 +193,7 @@ export function cursor<T>(store: string, context: LDBContext, option: LDBCursorO
     ) => {
         const { index, query, direction } = option
         const { getTransaction, makeTransaction } = context
+        // use global transction if exists
         const current = getTransaction()
         if (current) {
             const objectStore = current.objectStore(store)
@@ -118,6 +204,7 @@ export function cursor<T>(store: string, context: LDBContext, option: LDBCursorO
                 return callback(cursorRequest)
             })
         }
+        // or create a transaction
         const transaction = await makeTransaction(store, mode)
         return transactionAction<T>(transaction, () => {
             const objectStore = transaction.objectStore(store)

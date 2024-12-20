@@ -20,7 +20,7 @@ export type LDBStoreOption = {
 }
 
 /**
- * create index option
+ * index info
  */
 export type LDBIndexInfo = {
     name: string
@@ -30,7 +30,7 @@ export type LDBIndexInfo = {
 }
 
 /**
- * create object store option
+ * object store info
  */
 export type LDBStoreInfo = {
     name: string
@@ -39,6 +39,12 @@ export type LDBStoreInfo = {
     indexes: Record<string, LDBIndexInfo>
 }
 
+/**
+ * get object store info
+ * 
+ * @param objectStore object store
+ * @returns object store info
+ */
 export function info(objectStore: IDBObjectStore) {
     const { name, keyPath, autoIncrement, indexNames } = objectStore
     const indexes: Record<string, LDBIndexInfo>[] = [...indexNames].map((name) => {
