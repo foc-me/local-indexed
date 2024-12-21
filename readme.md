@@ -2,6 +2,14 @@
 
 a lib for indexeddb
 
+**all types starting with "LDB" in this document are declared types**
+**and have no corresponding constructors**
+
+such as `LDBCollection` is the return type of `LDBIndexed.collection` function
+and there is no function named `LDBCollection` as a constructor
+
+**and all types starting with "IDB" are built-in browser environments**
+
 # install
 
 ```shell
@@ -73,7 +81,7 @@ await database.transaction(async () => {
     localIndexed.use(indexedDB)
     ```
 
-    **an exception will be thrown if no global factory is set or there is no default factory**
+    **an exception will be thrown if no global factory is set and there is no default factory**
 
 * localIndexed.databases(): Promise\<IDBDatabaseInfo[]>
     * return `Promise<IDBDatabaseInfo[]>`: result of database info
@@ -335,7 +343,7 @@ await database.transaction(async () => {
             }
         })
 
-        // update value
+        // update values
         await classes.insert(classesList.map(item => { ... }))
         await classmates.insert(classmatesList.map(item => { ... }))
     })
@@ -493,6 +501,7 @@ await database.transaction(async () => {
 
 * LDBIndexed.collection\<T>(store: string): LDBCollection\<T>
     * param `store: string`: store name
+    * return `LDBCollection<T>`: collection object
 
     create a collection
 
@@ -505,6 +514,23 @@ await database.transaction(async () => {
     ```
 
 ## LDBCollection\<T>
+
+use `LDBIndexed.collection` create a collection object
+
+the generic type `T` should extends object but in fact the default value is any
+
+```typescript
+import localIndexed from "@focme/local-indexed"
+
+type Store = { id: number, name: string }
+
+const indexed = localIndexed("database")
+
+const anyStore = indexed.collection("store") // LDBCollection<any>
+const typedStore = indexed.collection<Store>("store") // LDBCollection<Store>
+```
+
+actually `any` type value cannot be inserted into object store even though `IDBObjectStore.add(value: any, key?: IDBValidKey)` and `IDBObjectStore.put(value: any, key?: IDBValidKey)` both specify the value parameter type as any
 
 ### detial apis
 
@@ -765,22 +791,904 @@ these apis can only be used in `LDBIndexed.upgrade` callback function
 ### collection apis
 
 * LDBCollection\<T>.insert\<K extends IDBValidKey>(value: any): Promise\<K>
+    * param `value: any`: insert value
+    * return `Promise<K>`: key
+
+    insert value into object store
+
+    type of the inserted value should extend `object` as something like number cannot be inserted into object store
+
+    `LDBCollection.insert()` returns the key of the newly inserted row
+
+    ```javascript
+    import localIndexed from "@focme/local-indexed"
+
+    const indexed = localIndexed("database")
+    const store = indexed.collection("store")
+
+    // version 1
+    await indexed.upgrade(() => {
+        // create store
+        store.create({ keyPath: "id", autoIncrement: true })
+        // create index
+        store.createIndex("type", { keyPath: "type", unique: false })
+    })
+
+    // insert value
+    const id = await store.insert({ name: "name1", type: "type1" })
+    console.log(id) // 1
+    const list = await store.find()
+    console.log(list) // [{ id: 1, name: "name1", type: "type1" }]
+    ```
+
+    if set `autoIncrement` to `true`
+    and inserting an existing key will throw an exception
+
+    ```javascript
+    import localIndexed from "@focme/local-indexed"
+
+    const indexed = localIndexed("database")
+    const store = indexed.collection("store")
+
+    // version 1
+    await indexed.upgrade(() => {
+        // create store
+        store.create({ keyPath: "id", autoIncrement: true })
+        // create index
+        store.createIndex("type", { keyPath: "type", unique: false })
+    })
+
+    // insert value
+    const id = await store.insert({ name: "name1", type: "type1" })
+    console.log(id) // 1
+    const list = await store.find()
+    console.log(list) // [{ id: 1, name: "name1", type: "type1" }]
+
+    // insert value
+    const id = await store.insert({ id: 1, name: "name1", type: "type1" }) // throw error
+    ```
+
 * LDBCollection\<T>.insert\<K extends IDBValidKey>(values: any[]): Promise\<K[]>
+    * param `values: any[]`: insert values
+    * return `Promise<K[]>`: keys
+
+    insert values info object store
+
+    ```javascript
+    import localIndexed from "@focme/local-indexed"
+
+    const indexed = localIndexed("database")
+    const store = indexed.collection("store")
+
+    // version 1
+    await indexed.upgrade(() => {
+        // create store
+        store.create({ keyPath: "id", autoIncrement: true })
+        // create index
+        store.createIndex("type", { keyPath: "type", unique: false })
+    })
+
+    // insert values
+    const ids = await store.insert([
+        { name: "name1", type: "type1" },
+        { name: "name2", type: "type2" }
+    ])
+    console.log(ids) // [1, 2]
+    const list = await store.find()
+    console.log(list.length) // 2
+    console.log(list[0]) // [{ id: 1, name: "name1", type: "type1" }]
+    console.log(list[1]) // [{ id: 2, name: "name2", type: "type2" }]
+    ```
+
 * LDBCollection\<T>.update\<K extends IDBValidKey>(value: any): Promise\<K>
+    * params `value: any`: update value
+    * return `Promise<K>`: key
+
+    update value by key
+
+    the updated value should contain the key path field
+
+    ```javascript
+    import localIndexed from "@focme/local-indexed"
+
+    const indexed = localIndexed("database")
+    const store = indexed.collection("store")
+
+    // version 1
+    await indexed.upgrade(() => {
+        // create store
+        store.create({ keyPath: "id", autoIncrement: true })
+        // create index
+        store.createIndex("type", { keyPath: "type", unique: false })
+    })
+
+    // insert value
+    const id = await store.insert({ name: "name1", type: "type1" })
+    console.log(id) // 1
+    const list = await store.find()
+    console.log(list) // [{ id: 1, name: "name1", type: "type1" }]
+
+    // update value
+    const updateId = await store.update({ id: 1, name: "name2", type: "name2" })
+    console.log(updateId) // 1
+    const updateList = await store.find()
+    console.log(updateList) // [{ id: 1, name: "name2", type: "type2" }]
+    ```
+
+    and `LDBCollection.update()` will insert a new data
+    if the specified key does not exist in object store
+
+    ```javascript
+    import localIndexed from "@focme/local-indexed"
+
+    const indexed = localIndexed("database")
+    const store = indexed.collection("store")
+
+    // version 1
+    await indexed.upgrade(() => {
+        // create store
+        store.create({ keyPath: "id", autoIncrement: true })
+        // create index
+        store.createIndex("type", { keyPath: "type", unique: false })
+    })
+
+    // insert value
+    const id = await store.insert({ name: "name1", type: "type1" })
+    console.log(id) // 1
+    const list = await store.find()
+    console.log(list) // [{ id: 1, name: "name1", type: "type1" }]
+
+    // update value
+    const updateId = await store.update({ id: 2, name: "name2", type: "name2" })
+    console.log(updateId) // 2
+    const updateList = await store.find()
+    console.log(updateList.length) // 2
+    console.log(updateList[0]) // [{ id: 1, name: "name1", type: "type1" }]
+    console.log(updateList[1]) // [{ id: 2, name: "name2", type: "type2" }]
+    ```
+
 * LDBCollection\<T>.update\<K extends IDBValidKey>(values: any[]): Promise\<K[]>
+    * param `values: any[]`: update values
+    * return `Promise<K[]>`: keys
+
+    update values by keys
+
+    ```javascript
+    import localIndexed from "@focme/local-indexed"
+
+    const indexed = localIndexed("database")
+    const store = indexed.collection("store")
+
+    // version 1
+    await indexed.upgrade(() => {
+        // create store
+        store.create({ keyPath: "id", autoIncrement: true })
+        // create index
+        store.createIndex("type", { keyPath: "type", unique: false })
+    })
+
+    // insert values
+    const ids = await store.insert([
+        { name: "name1", type: "type1" },
+        { name: "name2", type: "type2" }
+    ])
+    console.log(ids) // [1, 2]
+    const list = await store.find()
+    console.log(list.length) // 2
+    console.log(list[0]) // [{ id: 1, name: "name1", type: "type1" }]
+    console.log(list[1]) // [{ id: 2, name: "name2", type: "type2" }]
+
+    const updateIds = await store.insert([
+        { id: 1, name: "updateName1", type: "updateType1" },
+        { id: 2, name: "updateName2", type: "updateType2" }
+    ])
+    console.log(updateIds) // [1, 2]
+    const updateList = await store.find()
+    console.log(updateList.length) // 2
+    console.log(updateList[0]) // [{ id: 1, name: "updateName1", type: "updateType1" }]
+    console.log(updateList[1]) // [{ id: 2, name: "updateName2", type: "updateType2" }]
+    ```
+
 * LDBCollection\<T>.remove(key: IDBValidKey): Promise\<void>
+    * param `key: IDBValidKey`: key
+
+    delete value by key
+
+    ```javascript
+    import localIndexed from "@focme/local-indexed"
+
+    const indexed = localIndexed("database")
+    const store = indexed.collection("store")
+
+    // version 1
+    await indexed.upgrade(() => {
+        // create store
+        store.create({ keyPath: "id", autoIncrement: true })
+        // create index
+        store.createIndex("type", { keyPath: "type", unique: false })
+    })
+
+    // insert value
+    const id = await store.insert({ name: "name1", type: "type1" })
+    console.log(id) // 1
+    const list = await store.find()
+    console.log(list) // [{ id: 1, name: "name1", type: "type1" }]
+
+    // delete value
+    await store.remove(1)
+    const updateList = await store.find()
+    console.log(updateList.length) // 0
+    ```
+
 * LDBCollection\<T>.remove(keys: IDBValidKey[]): Promise\<void>
+    * param `keys: IDBValidKey[]`: keys
+
+    delete values by keys
+
+    ```javascript
+    import localIndexed from "@focme/local-indexed"
+
+    const indexed = localIndexed("database")
+    const store = indexed.collection("store")
+
+    // version 1
+    await indexed.upgrade(() => {
+        // create store
+        store.create({ keyPath: "id", autoIncrement: true })
+        // create index
+        store.createIndex("type", { keyPath: "type", unique: false })
+    })
+
+    // insert values
+    const ids = await store.insert([
+        { name: "name1", type: "type1" },
+        { name: "name2", type: "type2" }
+    ])
+    console.log(ids) // [1, 2]
+    const list = await store.find()
+    console.log(list.length) // 2
+    console.log(list[0]) // [{ id: 1, name: "name1", type: "type1" }]
+    console.log(list[1]) // [{ id: 2, name: "name2", type: "type2" }]
+
+    // delete values
+    await store.remove([1, 2])
+    const updateList = await store.find()
+    console.log(updateList.length) // 0
+    ```
+
 * LDBCollection\<T>.remove(keyRnage: IDBKeyRange): Promise\<void>
-* LDBCollection\<T>.find(key?: IDBValidKey | IDBKeyRange, count?: number): Promise\<T[]>
+    * param `keyRnage: IDBKeyRange`: key range
+
+    delete values by key range
+
+    ```javascript
+    import localIndexed from "@focme/local-indexed"
+
+    const indexed = localIndexed("database")
+    const store = indexed.collection("store")
+
+    // version 1
+    await indexed.upgrade(() => {
+        // create store
+        store.create({ keyPath: "id", autoIncrement: true })
+        // create index
+        store.createIndex("type", { keyPath: "type", unique: false })
+    })
+
+    // insert values
+    const ids = await store.insert([
+        { name: "name1", type: "type1" },
+        { name: "name2", type: "type2" },
+        { name: "name3", type: "type3" },
+        { name: "name4", type: "type4" },
+        { name: "name5", type: "type5" }
+    ])
+    console.log(ids) // [1, 2, 3, 4, 5]
+    const list = await store.find()
+    console.log(list.length) // 5
+
+    // delete values
+    await store.remove(IBDKeyRange.bound(1, 5))
+    const updateList = await store.find()
+    console.log(updateList.length) // 0
+    ```
+
+* LDBCollection\<T>.find(): Promise\<T[]>
+    * return `Promise<T[]>`: values
+
+    get all values
+
+    ```javascript
+    import localIndexed from "@focme/local-indexed"
+
+    const indexed = localIndexed("database")
+    const store = indexed.collection("store")
+
+    // version 1
+    await indexed.upgrade(() => {
+        // create store
+        store.create({ keyPath: "id", autoIncrement: true })
+        // create index
+        store.createIndex("type", { keyPath: "type", unique: false })
+    })
+
+    // insert values
+    const ids = await store.insert([
+        { name: "name1", type: "type1" },
+        { name: "name2", type: "type2" },
+        { name: "name3", type: "type3" },
+        { name: "name4", type: "type4" },
+        { name: "name5", type: "type5" }
+    ])
+
+    // get all values
+    const list = await store.find()
+    console.log(list.length) // 5
+    console.log(list[0]) // { id: 1, name: "name1", type: "type1" }
+    console.log(list[1]) // { id: 2, name: "name2", type: "type2" }
+    console.log(list[2]) // { id: 3, name: "name3", type: "type3" }
+    console.log(list[3]) // { id: 4, name: "name4", type: "type4" }
+    console.log(list[4]) // { id: 5, name: "name5", type: "type5" }
+    ```
+
+* LDBCollection\<T>.find(key: IDBValidKey | IDBKeyRange, count?: number): Promise\<T[]>
+    * param `key: IDBValidKey | IDBKeyRange`: key or key range
+    * param `count: number`: quantity limit
+    * return `Promise<T[]>`: values
+
+    get values by key
+
+    if `autoIncrement` set to `true` there will be only one value
+
+    ```javascript
+    import localIndexed from "@focme/local-indexed"
+
+    const indexed = localIndexed("database")
+    const store = indexed.collection("store")
+
+    // version 1
+    await indexed.upgrade(() => {
+        // create store
+        store.create({ keyPath: "id", autoIncrement: true })
+        // create index
+        store.createIndex("type", { keyPath: "type", unique: false })
+    })
+
+    // insert values
+    const ids = await store.insert([
+        { name: "name1", type: "type1" },
+        { name: "name2", type: "type2" },
+        { name: "name3", type: "type3" },
+        { name: "name4", type: "type4" },
+        { name: "name5", type: "type5" }
+    ])
+
+    // get values
+    const list = await store.find(1)
+    console.log(list.length) // 1
+    console.log(list[0]) // { id: 1, name: "name1", type: "type1" }
+
+    // with count
+    const countList = await store.find(1, 10)
+    console.log(countList.length) // 1
+    console.log(countList[0]) // { id: 1, name: "name1", type: "type1" }
+    ```
+
+    get values by key range
+
+    ```javascript
+    import localIndexed from "@focme/local-indexed"
+
+    const indexed = localIndexed("database")
+    const store = indexed.collection("store")
+
+    // version 1
+    await indexed.upgrade(() => {
+        // create store
+        store.create({ keyPath: "id", autoIncrement: true })
+        // create index
+        store.createIndex("type", { keyPath: "type", unique: false })
+    })
+
+    // insert values
+    const ids = await store.insert([
+        { name: "name1", type: "type1" },
+        { name: "name2", type: "type2" },
+        { name: "name3", type: "type3" },
+        { name: "name4", type: "type4" },
+        { name: "name5", type: "type5" }
+    ])
+
+    // get values
+    const list = await store.find(IDBKeyRange.bound(1, 5))
+    console.log(list.length) // 5
+    console.log(list[0]) // { id: 1, name: "name1", type: "type1" }
+    console.log(list[1]) // { id: 2, name: "name2", type: "type2" }
+    console.log(list[2]) // { id: 3, name: "name3", type: "type3" }
+    console.log(list[3]) // { id: 4, name: "name4", type: "type4" }
+    console.log(list[4]) // { id: 5, name: "name5", type: "type5" }
+
+    // with count
+    const countList = await store.find(1, 2)
+    console.log(countList.length) // 2
+    console.log(list[0]) // { id: 1, name: "name1", type: "type1" }
+    console.log(list[1]) // { id: 2, name: "name2", type: "type2" }
+    ```
+
 * LDBCollection\<T>.find(keys: IDBValidKey[]): Promise\<T[]>
+    * param `keys: IDBValidKey[]`: keys
+    * return `Promise<T[]>`: values
+
+    get value by keys
+
+    ```javascript
+    import localIndexed from "@focme/local-indexed"
+
+    const indexed = localIndexed("database")
+    const store = indexed.collection("store")
+
+    // version 1
+    await indexed.upgrade(() => {
+        // create store
+        store.create({ keyPath: "id", autoIncrement: true })
+        // create index
+        store.createIndex("type", { keyPath: "type", unique: false })
+    })
+
+    // insert values
+    const ids = await store.insert([
+        { name: "name1", type: "type1" },
+        { name: "name2", type: "type2" },
+        { name: "name3", type: "type3" },
+        { name: "name4", type: "type4" },
+        { name: "name5", type: "type5" }
+    ])
+
+    // get all values
+    const list = await store.find([1, 2, 3, 4, 5])
+    console.log(list.length) // 5
+    console.log(list[0]) // { id: 1, name: "name1", type: "type1" }
+    console.log(list[1]) // { id: 2, name: "name2", type: "type2" }
+    console.log(list[2]) // { id: 3, name: "name3", type: "type3" }
+    console.log(list[3]) // { id: 4, name: "name4", type: "type4" }
+    console.log(list[4]) // { id: 5, name: "name5", type: "type5" }
 
 ### collection cursor apis
 
-* LDBCollection\<T>.find(filter: (item: T) => boolean, option?: { sort: string, order: string }): LDBCursor\<T>
+* LDBCollection\<T>.find(filter: (item: T) => boolean): LDBCursor\<T>
+    * param `filter: (item: T) => boolean`: cursor filter
+    * return `LDBCursor`: cursor object
+
+    create cursor object with a filter function
+
+    just a simple way to use `LDBCollection<T>.find(option: LDBCollectionCursor<T>): LDBCursor<T>`
+
+    ```javascript
+    import localIndexed from "@focme/local-indexed"
+
+    const indexed = localIndexed("database")
+    const store = indexed.collection("store")
+
+    const cursor = store.find(() => true)
+    // as same as
+    // const cursor = store.find({ filter: () => true })
+    ```
+
+* LDBCollection\<T>.find(option: LDBCollectionCursor\<T>): LDBCursor\<T>
+    * param `option: LDBCollectionCursor`: cursor option
+    * return `LDBCursor`: cursor object
+
+        ```typescript
+        // cursor direction
+        type IDBCursorDirection = "next" | "nextunique" | "prev" | "prevunique"
+
+        // cursor option
+        type LDBCollectionCursor<T> = {
+            // cursor filter
+            filter?: (item: T) => boolean
+            // sort by
+            sort?: string
+            // order by
+            order?: IDBCursorDirection
+        }
+        ```
+
+    create cursor object with open cursor option
+
+    the `option.filter` function is used to iterate over all values
+    and you can use `() => true` to match all of them
+
+    ```javascript
+    import localIndexed from "@focme/local-indexed"
+
+    const indexed = localIndexed("database")
+    const store = indexed.collection("store")
+
+    // version 1
+    await indexed.upgrade(() => {
+        // create store
+        store.create({ keyPath: "id", autoIncrement: true })
+        // create index
+        store.createIndex("type", { keyPath: "type", unique: false })
+    })
+
+    // insert values
+    const ids = await store.insert([
+        { name: "name1", type: "type1" },
+        { name: "name2", type: "type2" },
+        { name: "name3", type: "type3" },
+        { name: "name4", type: "type4" },
+        { name: "name5", type: "type5" }
+    ])
+
+    // get all values use cursor
+    const cursor = store.find({ filter: () => true })
+    const list = await cursor.toList()
+    console.log(list.length) // 5
+    console.log(list[0]) // { id: 1, name: "name1", type: "type1" }
+    console.log(list[1]) // { id: 2, name: "name2", type: "type2" }
+    console.log(list[2]) // { id: 3, name: "name3", type: "type3" }
+    console.log(list[3]) // { id: 4, name: "name4", type: "type4" }
+    console.log(list[4]) // { id: 5, name: "name5", type: "type5" }
+    ```
+
+    the `option.sort` parameter determines which index to use to create the cursor
+
+    `LDBCollection.find` will use object store to create the cursor
+    if the index specified by `option.sort` does not exist or there is no such parameter
+
+    **note that the values matched by cursors created using index and object store may be different**
+
+    ```javascript
+    import localIndexed from "@focme/local-indexed"
+
+    const indexed = localIndexed("database")
+    const store = indexed.collection("store")
+
+    // version 1
+    await indexed.upgrade(() => {
+        // create store
+        store.create({ keyPath: "id", autoIncrement: true })
+        // create index
+        store.createIndex("type", { keyPath: "type", unique: false })
+    })
+
+    // insert values
+    const ids = await store.insert([
+        { name: "name1", type: "type1" },
+        { name: "name2", type: "type2" },
+        { name: "name3", type: "type3" },
+        { name: "name4" },
+        { name: "name5" }
+    ])
+
+    // get all values use object store cursor
+    const cursor = store.find({ filter: () => true })
+    const list = await cursor.toList()
+    console.log(list.length) // 5
+    console.log(list[0]) // { id: 1, name: "name1", type: "type1" }
+    console.log(list[1]) // { id: 2, name: "name2", type: "type2" }
+    console.log(list[2]) // { id: 3, name: "name3", type: "type3" }
+    console.log(list[3]) // { id: 4, name: "name4" }
+    console.log(list[4]) // { id: 5, name: "name5" }
+
+    // get all values use index cursor
+    const indexCursor = store.find({ filter: () => true, sort: "type" })
+    const indexList = await cursor.toList()
+    console.log(indexList.length) // 3
+    console.log(indexList[0]) // { id: 1, name: "name1", type: "type1" }
+    console.log(indexList[1]) // { id: 2, name: "name2", type: "type2" }
+    console.log(indexList[2]) // { id: 3, name: "name3", type: "type3" }
+    ```
+
+    the `option.direction` parameter determines the direction of the cursor traversal
+
+    ```javascript
+    import localIndexed from "@focme/local-indexed"
+
+    const indexed = localIndexed("database")
+    const store = indexed.collection("store")
+
+    // version 1
+    await indexed.upgrade(() => {
+        // create store
+        store.create({ keyPath: "id", autoIncrement: true })
+        // create index
+        store.createIndex("type", { keyPath: "type", unique: false })
+    })
+
+    // insert values
+    const ids = await store.insert([
+        { name: "name1", type: "type1" },
+        { name: "name2", type: "type2" },
+        { name: "name3", type: "type1" },
+        { name: "name4", type: "type2" },
+        { name: "name5", type: "type1" }
+    ])
+
+    // get all values use object store cursor
+    const cursor = store.find({ filter: () => true })
+    const list = await cursor.toList()
+    console.log(list.length) // 5
+    console.log(list[0]) // { id: 1, name: "name1", type: "type1" }
+    console.log(list[1]) // { id: 2, name: "name2", type: "type2" }
+    console.log(list[2]) // { id: 3, name: "name3", type: "type1" }
+    console.log(list[3]) // { id: 4, name: "name4", type: "type2" }
+    console.log(list[4]) // { id: 5, name: "name5", type: "type1" }
+
+    // get all values use object store cursor with direction prev
+    const prevCursor = store.find({ filter: () => true, order: "prev" })
+    const prevList = await cursor.toList()
+    console.log(prevList.length) // 5
+    console.log(prevList[0]) // { id: 5, name: "name5", type: "type1" }
+    console.log(prevList[1]) // { id: 4, name: "name4", type: "type2" }
+    console.log(prevList[2]) // { id: 3, name: "name3", type: "type1" }
+    console.log(prevList[3]) // { id: 2, name: "name2", type: "type2" }
+    console.log(prevList[4]) // { id: 1, name: "name1", type: "type1" }
+
+    // get all values use index cursor
+    const indexCursor = store.find({ filter: () => true, sort: "type" })
+    const indexList = await cursor.toList()
+    console.log(indexList.length) // 5
+    console.log(indexList[0]) // { id: 1, name: "name1", type: "type1" }
+    console.log(indexList[1]) // { id: 3, name: "name3", type: "type1" }
+    console.log(indexList[2]) // { id: 5, name: "name5", type: "type1" }
+    console.log(indexList[3]) // { id: 2, name: "name2", type: "type2" }
+    console.log(indexList[4]) // { id: 4, name: "name4", type: "type2" }
+
+    // get all values use index cursor with direction prev
+    const indexPrevCursor = store.find({ filter: () => true, sort: "type", order: "prev" })
+    const indexPrevList = await cursor.toList()
+    console.log(indexPrevList.length) // 3
+    console.log(indexPrevList[0]) // { id: 4, name: "name4", type: "type2" }
+    console.log(indexPrevList[1]) // { id: 2, name: "name2", type: "type2" }
+    console.log(indexPrevList[2]) // { id: 5, name: "name5", type: "type1" }
+    console.log(indexPrevList[3]) // { id: 3, name: "name3", type: "type1" }
+    console.log(indexPrevList[4]) // { id: 1, name: "name1", type: "type1" }
+    ```
 
 ## LDBCursor\<T>
 
-* LDBCursor\<T>.update\<K extends IDBValidKey>(filter: (item: T) => any): Promise\<K[]>
+use `LDBCollection.find` create a cursor object
+
+* LDBCursor\<T>.update\<K extends IDBValidKey>(formatter: (item: T) => any): Promise\<K[]>
+    * param `formatter: (item: T) => any`: update formatter
+    * return `Promise<K[]>`: keys
+
+    update values by cursor
+
+    the cursor will traverse the matching values and call the `formatter` function to determine whether to update the current value
+
+    the cursor will try to modify the current value when the `formatter` function returns non-undefined and non-null value
+
+    try to return object type value to avoid exceptions
+
+    ```javascript
+    import localIndexed from "@focme/local-indexed"
+
+    const indexed = localIndexed("database")
+    const store = indexed.collection("store")
+
+    // version 1
+    await indexed.upgrade(() => {
+        // create store
+        store.create({ keyPath: "id", autoIncrement: true })
+        // create index
+        store.createIndex("type", { keyPath: "type", unique: false })
+    })
+
+    // insert values
+    const ids = await store.insert([
+        { name: "name1", type: "type1" },
+        { name: "name2", type: "type2" },
+        { name: "name3", type: "type1" },
+        { name: "name4", type: "type2" },
+        { name: "name5", type: "type1" }
+    ])
+
+    // create cursor
+    // cursor traverse three value
+    const cursor = store.find(item => item.id < 4)
+    // but only update two of them
+    const ids = await cursor.update(item => {
+        const { id } = item
+        if (id < 3) {
+            return { id, name: `updateName${id}`, type: `updateType${id}` }
+        }
+    })
+    console.log(ids) // [1, 2]
+
+    const list = await store.find()
+    console.log(list.length) // 5
+    console.log(list[0]) // { id: 1, name: "updateName1", type: "updateType1" }
+    console.log(list[1]) // { id: 2, name: "updateName2", type: "updateType2" }
+    console.log(list[2]) // { id: 3, name: "name3", type: "type1" }
+    console.log(list[3]) // { id: 4, name: "name4", type: "type2" }
+    console.log(list[4]) // { id: 5, name: "name5", type: "type1" }
+    ```
+    return `true` in `formatter` function can stop the cursor traversal
+
+    ```javascript
+    import localIndexed from "@focme/local-indexed"
+
+    const indexed = localIndexed("database")
+    const store = indexed.collection("store")
+
+    // version 1
+    await indexed.upgrade(() => {
+        // create store
+        store.create({ keyPath: "id", autoIncrement: true })
+        // create index
+        store.createIndex("type", { keyPath: "type", unique: false })
+    })
+
+    // insert values
+    const ids = await store.insert([
+        { name: "name1", type: "type1" },
+        { name: "name2", type: "type2" },
+        { name: "name3", type: "type1" },
+        { name: "name4", type: "type2" },
+        { name: "name5", type: "type1" }
+    ])
+
+    // create cursor
+    // cursor traverse only two values while the formatter stopped traversal
+    const cursor = store.find(item => item.id < 4)
+    // but only update the first one
+    const ids = await cursor.update(item => {
+        if (item.id === 1) {
+            return { id: 1, name: "updateName1", type: "updateType1" }
+        } else {
+            // stop the cursor traversal
+            return true
+        }
+    })
+    console.log(ids) // [1]
+
+    const list = await store.find()
+    console.log(list.length) // 5
+    console.log(list[0]) // { id: 1, name: "updateName1", type: "updateType1" }
+    console.log(list[1]) // { id: 2, name: "name2", type: "type2" }
+    console.log(list[2]) // { id: 3, name: "name3", type: "type1" }
+    console.log(list[3]) // { id: 4, name: "name4", type: "type2" }
+    console.log(list[4]) // { id: 5, name: "name5", type: "type1" }
+    ```
+
 * LDBCursor\<T>.remove(): Promise\<number>
+    * return `Promise<number>`: delete quantity number
+
+    delete values by cursor
+
+    ```javascript
+    import localIndexed from "@focme/local-indexed"
+
+    const indexed = localIndexed("database")
+    const store = indexed.collection("store")
+
+    // version 1
+    await indexed.upgrade(() => {
+        // create store
+        store.create({ keyPath: "id", autoIncrement: true })
+        // create index
+        store.createIndex("type", { keyPath: "type", unique: false })
+    })
+
+    // insert values
+    const ids = await store.insert([
+        { name: "name1", type: "type1" },
+        { name: "name2", type: "type2" },
+        { name: "name3", type: "type1" },
+        { name: "name4", type: "type2" },
+        { name: "name5", type: "type1" }
+    ])
+
+    // create cursor
+    const cursor = store.find(item => item.id < 4)
+    // delete all
+    const count = await cursor.remove()
+    console.log(count) // 3
+
+    const list = await store.find()
+    console.log(list.length) // 2
+    console.log(list[0]) // { id: 4, name: "name4", type: "type2" }
+    console.log(list[1]) // { id: 5, name: "name5", type: "type1" }
+    ```
+
+    **`LDBCursor.delete` cannot be stoped**
+
 * LDBCursor\<T>.toList(limit?: number, skip?: number): Promise\<T[]>
+    * param `limit: number`: limit quantity number
+    * param `skip: number`: skip quantity number
+    * return `Promise<T[]>`: values
+
+    get values by cursor
+
+    ```javascript
+    import localIndexed from "@focme/local-indexed"
+
+    const indexed = localIndexed("database")
+    const store = indexed.collection("store")
+
+    // version 1
+    await indexed.upgrade(() => {
+        // create store
+        store.create({ keyPath: "id", autoIncrement: true })
+        // create index
+        store.createIndex("type", { keyPath: "type", unique: false })
+    })
+
+    // insert values
+    const ids = await store.insert([
+        { name: "name1", type: "type1" },
+        { name: "name2", type: "type2" },
+        { name: "name3", type: "type1" },
+        { name: "name4", type: "type2" },
+        { name: "name5", type: "type1" },
+        { name: "name6", type: "type2" },
+        { name: "name7", type: "type1" },
+        { name: "name8", type: "type2" },
+        { name: "name8", type: "type1" },
+        { name: "name10", type: "type2" }
+    ])
+
+    const list = await store.find(() => true).toList()
+    console.log(list.length) // 10
+    console.log(list.map(item => item.id)) // [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+    const list1 = await store.find(() => true).toList(5)
+    console.log(list1.length) // 5
+    console.log(list1.map(item => item.id)) // [1, 2, 3, 4, 5]
+
+    const list2 = await store.find(() => true).toList(5, 3)
+    console.log(list2.length) // 5
+    console.log(list2.map(item => item.id)) // [4, 5, 6, 7, 8]
+
+    const list3 = await store.find(item => item.type === "type1").toList()
+    console.log(list3.length) // 5
+    console.log(list3.map(item => item.id)) // [1, 3, 5, 7, 9]
+
+    const list4 = await store.find(item => item.type === "type1").toList(3)
+    console.log(list4.length) // 3
+    console.log(list4.map(item => item.id)) // [1, 3, 5]
+
+    const list5 = await store.find(item => item.type === "type1").toList(3, 2)
+    console.log(list5.length) // 3
+    console.log(list5.map(item => item.id)) // [5, 7, 9]
+    ```
+
+    **cursors use events to traverse data in native javascript**
+    **so this method is very inefficient when there is a lot of data**
+
 * LDBCursor\<T>.count(): Promise\<number>
+    * return `Promise<number>`: values quantity number
+
+    count values by cursor
+
+    ```javascript
+    import localIndexed from "@focme/local-indexed"
+
+    const indexed = localIndexed("database")
+    const store = indexed.collection("store")
+
+    // version 1
+    await indexed.upgrade(() => {
+        // create store
+        store.create({ keyPath: "id", autoIncrement: true })
+        // create index
+        store.createIndex("type", { keyPath: "type", unique: false })
+    })
+
+    // insert values
+    const ids = await store.insert([
+        { name: "name1", type: "type1" },
+        { name: "name2", type: "type2" },
+        { name: "name3", type: "type1" },
+        { name: "name4", type: "type2" },
+        { name: "name5", type: "type1" }
+    ])
+
+    // create cursor
+    console.log(await store.find(() => true).count()) // 5
+    console.log(await store.find(item => item.id === 1).count()) // 1
+    console.log(await store.find(item => item.id < 5).count()) // 4
+    ```

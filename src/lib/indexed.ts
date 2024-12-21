@@ -54,7 +54,7 @@ export function deleteDatabase(database: string, indexedDB?: IDBFactory): Promis
             const request = indexed.deleteDatabase(database)
             request.addEventListener("success", async () => {
                 const info = await getDatabases()
-                resolve(!!info.find(item => item === database))
+                resolve(!info.find(item => item === database))
             })
             request.addEventListener("error", error => {
                 reject(error)

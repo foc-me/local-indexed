@@ -139,6 +139,8 @@ async function update<K extends IDBValidKey>(
         if (filter(cursor.value) === true) {
             const target = formatter(cursor.value)
             if (target !== undefined && target !== null) {
+                if (target === true) return true
+
                 result.push(await requestAction(() => {
                     return cursor.update(target)
                 }))
