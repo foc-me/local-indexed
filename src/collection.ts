@@ -131,9 +131,9 @@ export interface LDBCollection<T> {
     remove(keys: IDBValidKey[]): Promise<void>
     /**
      * delete values by key range
-     * @param keyRnage key range
+     * @param KeyRange key range
      */
-    remove(keyRnage: IDBKeyRange): Promise<void>
+    remove(KeyRange: IDBKeyRange): Promise<void>
     /**
      * get all values
      */
