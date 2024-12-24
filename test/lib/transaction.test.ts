@@ -1,16 +1,16 @@
 import "fake-indexeddb/auto"
-import { getDatabases, deleteDatabase } from "../indexed"
-import { getDatabase } from "../database"
-import { upgradeAction } from "../upgrade"
-import { transactionAction } from "../transaction"
-import { requestAction } from "../request"
+import { getDatabases, deleteDatabase } from "../../src/lib/indexed"
+import { getDatabase } from "../../src/lib/database"
+import { upgradeAction } from "../../src/lib/upgrade"
+import { transactionAction } from "../../src/lib/transaction"
+import { requestAction } from "../../src/lib/request"
 
 type Store = { id: number, value: number, odd?: "odd", re10: number }
 
 const databaseName = "local-indexed"
 const storeName = "test-store"
 
-describe("check transaction action", () => {
+describe("check transaction", () => {
     it("check empty indexed", async () => {
         expect((await getDatabases()).length).toBe(0)
     })

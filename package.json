@@ -1,7 +1,8 @@
 {
-    "name": "local-indexed",
+    "name": "@focme/local-indexed",
     "version": "0.0.1",
     "description": "a lib for indexeddb",
+    "keywords": ["indexeddb"],
     "main": "index.js",
     "author": "foc-me",
     "license": "MIT",

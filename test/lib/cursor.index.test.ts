@@ -1,17 +1,17 @@
 import "fake-indexeddb/auto"
-import { getDatabases, deleteDatabase } from "../indexed"
-import { getDatabase } from "../database"
-import { upgradeAction } from "../upgrade"
-import { transactionAction } from "../transaction"
-import { cursorAction } from "../cursor"
-import { requestAction } from "../request"
+import { getDatabases, deleteDatabase } from "../../src/lib/indexed"
+import { getDatabase } from "../../src/lib/database"
+import { upgradeAction } from "../../src/lib/upgrade"
+import { transactionAction } from "../../src/lib/transaction"
+import { cursorAction } from "../../src/lib/cursor"
+import { requestAction } from "../../src/lib/request"
 
 type Store = { id: number, value: number, odd?: "odd", re10: number }
 
 const databaseName = "local-indexed"
 const storeName = "test-store"
 
-describe("check cursor", () => {
+describe("check index cursor", () => {
     it("check upgrade", async () => {
         await upgradeAction(databaseName, 1, (event) => {
             const { transaction } = event
