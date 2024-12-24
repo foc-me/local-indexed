@@ -86,9 +86,15 @@ export function makeContext(database: string, indexedDB?: IDBFactory) {
      */
     const makeTransaction = async (store: string | string[], mode?: IDBTransactionMode, option?: IDBTransactionOptions) => {
         const database = await makeDatabase()
-        const transaction = database.transaction(store, mode, option)
-        setTransaction(transaction)
-        return transaction
+        try {
+            const transaction = database.transaction(store, mode, option)
+            setTransaction(transaction)
+            return transaction
+        } catch (error) {
+            database.close()
+            setTransaction()
+            throw error
+        }
     }
 
     return {

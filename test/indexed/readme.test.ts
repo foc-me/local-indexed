@@ -4,7 +4,7 @@ import localIndexed from "../../src/indexed"
 
 type Store = { id: number, type: string }
 
-beforeEach(async () => {
+afterEach(async () => {
     await localIndexed.delete("database")
 })
 
@@ -258,6 +258,15 @@ describe("check readme", () => {
         expect(Object.keys(info.indexes)).toEqual(["index_name", "index_number"])
         expect(info.indexes["index_name"]).toEqual({ name: "index_name", keyPath: "name", unique: false, multiEntry: false })
         expect(info.indexes["index_number"]).toEqual({ name: "index_number", keyPath: "number", unique: true, multiEntry: false })
+    })
+    it("check LDBCollection.exists", async () => {
+        const indexed = localIndexed("database")
+        const store = indexed.collection("store")
+        expect(await store.exists()).toBe(false)
+        await indexed.upgrade(() => {
+            store.create()
+        })
+        expect(await store.exists()).toBe(true)
     })
     it("check LDBCollection.create example 1", async () => {
         const indexed = localIndexed("database")

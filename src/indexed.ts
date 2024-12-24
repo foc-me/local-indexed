@@ -1,5 +1,5 @@
-import { getDatabase } from "./lib/database"
 import { getDatabases, deleteDatabase, useIndexedDB } from "./lib/indexed"
+import { stores } from "./store/stores"
 import { type LDBCollection, collection } from "./collection"
 import { type LDBContext, makeContext } from "./context"
 import { transaction } from "./transaction"
@@ -79,18 +79,6 @@ async function getVersion(database: string, indexedDB?: IDBFactory) {
 }
 
 /**
- * get store names from database
- * 
- * @param database database name
- * @returns store names
- */
-async function stores(database: string) {
-    const db = await getDatabase(database)
-    db.close()
-    return [...db.objectStoreNames]
-}
-
-/**
  * upgrade wrapper use to format upgrade parameters
  * 
  * @param context database context
@@ -107,7 +95,7 @@ async function upgradeWrapper(
         callback = version
     }
     if (typeof version !== "number") {
-        version = await getVersion(context.database) + 1
+        version = await getVersion(context.database, context.indexedDB) + 1
     }
     return upgrade(context, version, callback)
 }
@@ -123,8 +111,8 @@ function localIndexed(database: string, indexedDB?: IDBFactory) {
     const context = makeContext(database, indexedDB)
     return {
         name: database,
-        version: () => getVersion(database),
-        stores: () => stores(database),
+        version: () => getVersion(database, indexedDB),
+        stores: () => stores(database, indexedDB),
         upgrade: (version, callback) => upgradeWrapper(context, version, callback),
         collection: (store) => collection(context, store),
         transaction: (callback) => transaction(context, callback),

@@ -1,7 +1,10 @@
 import { type IDBActionRequest, requestAction } from "./lib/request"
 import { transactionAction } from "./lib/transaction"
-import { type LDBContext } from "./context"
-import { type LDBCursor, cursor } from "./cursor"
+import { stores } from "./store/stores"
+import { insertOne, insertMany } from "./store/insert"
+import { updateOne, updateMany } from "./store/update"
+import { remove } from "./store/remove"
+import { find } from "./store/find"
 import {
     type LDBStoreInfo,
     type LDBStoreOption,
@@ -13,18 +16,19 @@ import {
     createIndex,
     dropIndex
 } from "./store"
+import { type LDBContext } from "./context"
+import { type LDBCursor, cursor } from "./cursor"
 
 /**
  * collection cursor option
  */
-type LDBCollectionCursor<T> = {
+export type LDBCollectionCursor = {
     /**
-     * cursor filter
      * 
      * @param item value
      * @returns match
      */
-    filter?: (item: T) => boolean
+    filter?: (item: any) => boolean
     /**
      * sort by
      */
@@ -46,7 +50,7 @@ const directions = ["next", "nextunique", "prev", "prevunique"]
  * @param target target
  * @returns target is collection cursor option
  */
-function isCollectionCursor<T>(target: any): target is LDBCollectionCursor<T> {
+function isCollectionCursor(target: any): target is LDBCollectionCursor {
     return Object.prototype.toString.call(target) === "[object Object]" && (
         typeof target.filter === "function" ||
         typeof target.sort === "string" ||
@@ -63,6 +67,10 @@ export interface LDBCollection<T> {
      * get store info
      */
     info(): Promise<LDBStoreInfo>
+    /**
+     * detemine store exists
+     */
+    exists(): Promise<boolean>
     // upgrade
     /**
      * create store
@@ -163,112 +171,7 @@ export interface LDBCollection<T> {
      * 
      * @param option cursor option
      */
-    find(option: LDBCollectionCursor<T>): LDBCursor<T>
-}
-
-/**
- * insert value
- * 
- * @param objectStore object store
- * @param value value
- * @returns request
- */
-function insertOne(objectStore: IDBObjectStore, value: any) {
-    return objectStore.add(value)
-}
-
-/**
- * insert values
- * 
- * @param objectStore object store
- * @param values values
- * @returns request like
- */
-async function insertMany(objectStore: IDBObjectStore, values: any[]) {
-    const result: IDBValidKey[] = []
-    for (let i = 0; i < values.length; i++) {
-        result.push(await requestAction(() => {
-            return objectStore.add(values[i])
-        }))
-    }
-    return { result } as IDBActionRequest<IDBValidKey[]>
-}
-
-/**
- * update value
- * 
- * @param objectStore object store
- * @param value value
- * @returns request
- */
-function updateOne(objectStore: IDBObjectStore, value: any) {
-    return objectStore.put(value)
-}
-
-/**
- * update valeus
- * 
- * @param objectStore object store
- * @param values values
- * @returns request like
- */
-async function updateMany(objectStore: IDBObjectStore, values: any[]) {
-    const result: IDBValidKey[] = []
-    for (let i = 0; i < values.length; i++) {
-        result.push(await requestAction(() => {
-            return objectStore.put(values[i])
-        }))
-    }
-    return { result } as IDBActionRequest<IDBValidKey[]>
-}
-
-/**
- * delete values
- * 
- * @param objectStore object store
- * @param keys key path values or key range
- * @returns request
- */
-async function remove(
-    objectStore: IDBObjectStore,
-    keys: IDBValidKey | IDBValidKey[] | IDBKeyRange
-) {
-    if (Array.isArray(keys)) {
-        for (let i = 0; i < keys.length; i++) {
-            await requestAction(() => {
-                return objectStore.delete(keys[i])
-            })
-        }
-        return undefined as IDBActionRequest<undefined>
-    }
-    return objectStore.delete(keys)
-}
-
-/**
- * get values
- * 
- * @param objectStore object store
- * @param keys key path values or key range
- * @param count quantity limit
- * @returns request
- */
-async function find<T>(
-    objectStore: IDBObjectStore,
-    keys?: IDBValidKey | IDBValidKey[] | IDBKeyRange,
-    count?: number
-) {
-    if (Array.isArray(keys)) {
-        const result: T[] = []
-        for (let i = 0; i < keys.length; i++) {
-            if (count === undefined || result.length < count) {
-                result.push(await requestAction(() => {
-                    return objectStore.get(keys[i])
-                }))
-            }
-        }
-        return { result } as IDBActionRequest<T[]>
-    }
-    return objectStore.getAll(keys, count)
+    find(option: LDBCollectionCursor): LDBCursor<T>
 }
 
 /**
@@ -313,6 +216,11 @@ export function collection<T>(context: LDBContext, store: string) {
                 return info(objectStore)
             })
         },
+        exists: async () => {
+            const { database, indexedDB } = context
+            const current = await stores(database, indexedDB)
+            return current.includes(store)
+        },
         create: (option?: LDBStoreOption) => create(store, context, option),
         drop: () => drop(store, context),
         alter: (option?: LDBStoreOption) => alter(store, context, option),
@@ -336,7 +244,7 @@ export function collection<T>(context: LDBContext, store: string) {
             })
         },
         find: (
-            keys?: IDBValidKey | IDBValidKey[] | IDBKeyRange | ((item: T) => boolean) | LDBCollectionCursor<T>,
+            keys?: IDBValidKey | IDBValidKey[] | IDBKeyRange | ((item: T) => boolean) | LDBCollectionCursor,
             count?: number
         ) => {
             // return cursor
@@ -344,7 +252,7 @@ export function collection<T>(context: LDBContext, store: string) {
                 return cursor(store, context, { filter: keys })
             }
             // return cursor
-            if (isCollectionCursor<T>(keys)) {
+            if (isCollectionCursor(keys)) {
                 const { filter = () => true, sort, order } = keys
                 return cursor(store, context, { filter, index: sort, direction: order })
             }

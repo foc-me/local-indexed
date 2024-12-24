@@ -21,17 +21,24 @@ describe("check indexed collection", () => {
         expect(() => store.dropIndex("odd")).toThrow(Error)
         expect(() => store.dropIndex("odd")).toThrow("collection.dropIndex requires upgrade")
     })
+    it("check exists", async () => {
+        const indexed = localIndexed(databaseName)
+        const store = indexed.collection(storeName)
+        expect(await store.exists()).toBe(false)
+        await expect(store.info()).rejects.toThrow("No objectStore named test-store in this database")
+    })
     it("check create", async () => {
         const indexed = localIndexed(databaseName)
         await indexed.upgrade(() => {
             const store = indexed.collection(storeName)
             store.create({ keyPath: "id", autoIncrement: true })
         })
-        expect(await indexed.version()).toBe(1)
+        expect(await indexed.version()).toBe(2)
     })
     it("check info", async () => {
         const indexed = localIndexed(databaseName)
         const store = indexed.collection(storeName)
+        expect(await store.exists()).toBe(true)
         const info = await store.info()
         expect(info.name).toBe(storeName)
         expect(info.keyPath).toBe("id")

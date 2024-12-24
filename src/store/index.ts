@@ -1,5 +1,5 @@
-import { type IDBActionRequest } from "./lib/request"
-import { LDBContext } from "./context"
+import { type IDBActionRequest } from "../lib/request"
+import { LDBContext } from "../context"
 
 /**
  * create index option
