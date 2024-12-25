@@ -10,11 +10,11 @@ module.exports = {
         { dir: "./dist/dist", format: "umd", name: "localIndexed" }
     ],
     plugins: [
-        typescript({
-            outDir: null,
-            declaration: false,
-            declarationDir: null
-        }),
+        // typescript({
+        //     outDir: null,
+        //     declaration: false,
+        //     declarationDir: null
+        // }),
         terser(),
         copy({
             targets: [
