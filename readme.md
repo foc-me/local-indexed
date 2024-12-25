@@ -136,12 +136,12 @@ await store.update([
 ])
 
 // delete values
-await store.delete(1)
-await store.delete([1, 2, 3])
-await store.delete(IDBKeyRange.bound(1, 10))
+await store.remove(1)
+await store.remove([1, 2, 3])
+await store.remove(IDBKeyRange.bound(1, 10))
 ```
 
-> Rollback cannot be performed when calling `update` or `delete` methods outside of `upgrade` and `transaction`,
+> Rollback cannot be performed when calling `update` or `remove` methods outside of `upgrade` and `transaction`,
 > even if an exception is thrown
 
 ### Use `cursor`
@@ -271,7 +271,7 @@ And all types starting with "IDB" are built-in browser environments.
     localIndexed.use(indexedDB)
     ```
 
-    You can also use `localIndexed(database: string, indexedDB: IDBIndexed)` 
+    > You can also specify the current indexedDB factory using "localIndexed(database: string, indexedDB?: IDBFactory)".
 
 * <a id="localIndexed.databases">localIndexed.databases(): Promise\<IDBDatabaseInfo[]></a>
     * return `Promise<IDBDatabaseInfo[]>`: result of database info
