@@ -178,10 +178,10 @@ describe("check readme", () => {
     it("check LDBIndexed.transaction example 2", async () => {
         const indexed = localIndexed("database")
         expect(await indexed.stores()).toEqual([])
-        expect(await indexed.transaction(() => {
-            expect("will not console and throw")
+        await expect(indexed.transaction(() => {
+            console.log("will not console and throw")
             throw new Error()
-        })).toBe(undefined)
+        })).rejects.toThrow("An invalid operation was performed on an object. For example transaction creation attempt was made, but an empty scope was provided.")
     })
     it("check LDBIndexed.transaction example 3", async () => {
         const indexed = localIndexed("database")
