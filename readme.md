@@ -2,28 +2,28 @@
 
 A lib for indexeddb.
 
-**All types starting with "LDB" in this document are declared types**
-**and have no corresponding constructors**
-
-As `LDBCollection` is the return type of `LDBIndexed.collection()` function
-and there is no function named `LDBCollection` as a constructor.
-
-**And all types starting with "IDB" are built-in browser environments.**
-
-# install
+## Install
 
 ```shell
 npm instal @focme/local-indexed --save-dev
 ```
 
-# usage
+## Usage
+
+### Use `upgrade`
+
+The `upgrade` function is mainly used to create database and manage store settings.
+Call it before any other functions
+as most of them will get exception if the database does not exist.
+
+APIs like create/drop store and create/drop index functions can only be called in `upgrade` function.
+
+Create database, store and index.
 
 ```javascript
 import localIndexed from "@focme/local-indexed"
 
-// get database
 const database = localIndexed("database-name")
-// get collection
 const store = database.collection("store-name")
 
 // create database
@@ -32,35 +32,154 @@ await database.upgrade(async () => {
     store.create({ keyPath: "id" })
     // create index
     store.createIndex("name", { unique: false })
-    // init values
+
+    // init valeus
     await store.insert([
-        { id: 1, ... },
-        { id: 2, ... },
-        ...
+        { id: 1, name: "John" },
+        { id: 2, name: "Anny" }
     ])
-})
-
-// get values
-const items = await store.find() // get all values
-// update value
-await store.update({ id: 1, ... }) // update value of id to 1
-// delete value
-await store.remove(1) // delete value of id to 1
-
-// use transaction
-await database.transaction(async () => {
-    // get cursor
-    const cursor = store.find(item => item.id > 20)
-    // update values
-    await cursor.update(item => { ... }) // update values of id bigger than 20
-    // delete values
-    await cursor.remove() // delete values of id id bigger than 20
 })
 ```
 
-# APIs
+Alter store.
 
-## static apis
+```javascript
+import localIndexed from "@focme/local-indexed"
+
+const database = localIndexed("database-name")
+const store = database.collection("store-name")
+
+// upgrade database
+await database.upgrade(async () => {
+    // backup values
+    const values = await store.find() // get all values
+    // alter store
+    store.alter({ keyPath: "id", autoIncrement: true })
+
+    // insert values
+    await store.insert(values)
+})
+```
+
+### Use `transaction`
+
+The `transaction` function is mainly used to modify and delete data.
+
+```javascript
+import localIndexed from "@focme/local-indexed"
+
+const database = localIndexed("database-name")
+const store = database.collection("store-name")
+
+await database.transaction(async () => {
+    // update values
+    await store.update([
+        { id: 1, firstName: "John", lastName: "Wilson" },
+        { id: 2, firstName: "Anny", lastName: "Park" }
+    ])
+    // delete value 1
+    await store.delete(1)
+})
+```
+
+### Use `abort`
+
+The `upgrade` and `transaction` are all transactions with different type so that all of them support rollback operation.
+
+```javascript
+import localIndexed from "@focme/local-indexed"
+
+const database = localIndexed("database-name")
+const store = database.collection("store-name")
+
+await database.upgrade(async () => {
+    const values = await store.find()
+    store.alter({ keyPath: "id", autoIncrement: true })
+    await store.insert(values)
+
+    // abort upgrade
+    database.abort()
+})
+
+await database.transaction(async () => {
+    await store.update([
+        { id: 1, firstName: "John", lastName: "Wilson" },
+        { id: 2, firstName: "Anny", lastName: "Park" }
+    ])
+    await store.delete(1)
+
+    // abort transaction
+    database.abort()
+})
+```
+
+### Use `collection`
+
+Select, update and delete values.
+
+```javascript
+import localIndexed from "@focme/local-indexed"
+
+const database = localIndexed("database-name")
+const store = database.collection("store-name")
+
+// select values
+const values = await store.find()
+// const values = await store.find([1, 2, 3])
+// const values = await store.find(IDBKeyRange.bound(1, 10))
+
+// update value
+await store.update({ id: 1, ... })
+await store.update([
+    { id: 1, ... },
+    { id: 2, ... }
+])
+
+// delete values
+await store.remove(1)
+await store.remove([1, 2, 3])
+await store.remove(IDBKeyRange.bound(1, 10))
+```
+
+> Rollback cannot be performed when calling `update` or `remove` methods outside of `upgrade` and `transaction`,
+> even if an exception is thrown
+
+### Use `cursor`
+
+With a cursor object you can select, update and delete valeus.
+
+A `cursor` is a process of traversing data that can provide more precise matching rules.
+
+```javascript
+import localIndexed from "@focme/local-indexed"
+
+const database = localIndexed("database-name")
+const store = database.collection("store-name")
+
+const cursor = store.find((item) => item.id > 10 && item.id < 21)
+
+// select values
+const list = await cursor.toList()
+// const list = await cursor.toList(20, 10) // limit 20 skip 10
+
+// update values
+await cursor.update(item => ({ id: item.id, ... }))
+
+// delete values
+await cursor.delete()
+```
+
+### About exported types
+
+All types starting with "LDB" in this document have no corresponding constructors.
+As `LDBCollection` is the return type of `LDBIndexed.collection()` function
+and there is no function named `LDBCollection` as a constructor.
+
+And all types starting with "IDB" are built-in browser environments.
+
+## APIs
+
+### static apis
 
 * <a href="#localIndexed.use">localIndexed.use(indexedDB: IDBFactory): void</a>
 * <a href="#localIndexed.databases">localIndexed.databases(): Promise\<IDBDatabaseInfo[]></a>
@@ -68,20 +187,22 @@ await database.transaction(async () => {
 * <a href="#localIndexed.exists">localIndexed.exists(database: string, indexedDB?: IDBFactory): Promise\<boolean></a>
 * <a href="#localIndexed.version">localIndexed.version(database: string, indexedDB?: IDBFactory): Promise\<number></a>
 
-## LDBIndexed
+### localIndexed
 
 * <a href="#localIndexed">localIndexed(database: string, indexedDB?: IDBFactory): LDBIndexed</a>
 
-### attributes
+### LDBIndexed
+
+**attributes**
 
 * <a href="#LDBIndexed.name">LDBIndexed.name: string</a>
 
-### detial apis
+**detail apis**
 
 * <a href="#LDBIndexed.version">LDBIndexed.version(): Promise\<number></a>
 * <a href="#LDBIndexed.stores">LDBIndexed.stores(): Promise\<string[]></a>
 
-### transaction apis
+**transaction apis**
 
 * <a href="#LDBIndexed.upgrade">LDBIndexed.upgrade(callback?: (event: LDBUpgradeEvent) => void | Promise\<void>): Promise\<void></a>
 * <a href="#LDBIndexed.upgrade2">LDBIndexed.upgrade(version: number, callback?: (event: LDBUpgradeEvent) => void | Promise\<void>): Promise\<void></a>
@@ -89,18 +210,18 @@ await database.transaction(async () => {
 * <a href="#LDBIndexed.abort">LDBIndexed.abort(): void</a>
 * <a href="#LDBIndexed.close">LDBIndexed.close(): void</a>
 
-### collection apis
+**collection apis**
 
 * <a href="#LDBIndexed.collection">LDBIndexed.collection\<T>(store: string): LDBCollection\<T></a>
 
-## LDBCollection\<T>
+### LDBCollection\<T>
 
-### detial apis
+**detail apis**
 
 * <a href="#LDBCollection.info">LDBCollection\<T>.info(): Promise\<LDBStoreInfo></a>
 * <a href="#LDBCollection.exists">LDBCollection\<T>.exists(): Promise\<boolean></a>
 
-### upgrade store apis
+**upgrade apis**
 
 * <a href="#LDBCollection.create">LDBCollection\<T>.create(option?: LDBStoreOption): boolean</a>
 * <a href="#LDBCollection.drop">LDBCollection\<T>.drop(): boolean</a>
@@ -108,7 +229,7 @@ await database.transaction(async () => {
 * <a href="#LDBCollection.createIndex">LDBCollection\<T>.createIndex(name: string, option?: LDBIndexOption): boolean</a>
 * <a href="#LDBCollection.dropIndex">LDBCollection\<T>.dropIndex(name: string): boolean</a>
 
-### collection apis
+**collection apis**
 
 * <a href="#LDBCollection.insert">LDBCollection\<T>.insert\<K extends IDBValidKey>(value: any): Promise\<K></a>
 * <a href="#LDBCollection.insert2">LDBCollection\<T>.insert\<K extends IDBValidKey>(values: any[]): Promise\<K[]></a>
@@ -121,26 +242,26 @@ await database.transaction(async () => {
 * <a href="#LDBCollection.find2">LDBCollection\<T>.find(key: IDBValidKey | IDBKeyRange, count?: number): Promise\<T[]></a>
 * <a href="#LDBCollection.find3">LDBCollection\<T>.find(keys: IDBValidKey[]): Promise\<T[]></a>
 
-### collection cursor apis
+**cursor apis**
 
 * <a href="#LDBCollection.find4">LDBCollection\<T>.find(filter: (item: T) => boolean): LDBCursor\<T></a>
 * <a href="#LDBCollection.find5">LDBCollection\<T>.find(option: LDBCollectionCursor\<T>): LDBCursor\<T></a>
 
-## LDBCursor\<T>
+### LDBCursor\<T>
 
 * <a href="#LDBCursor.update">LDBCursor\<T>.update\<K extends IDBValidKey>(formatter: (item: T) => any): Promise\<K[]></a>
 * <a href="#LDBCursor.remove">LDBCursor\<T>.remove(): Promise\<number></a>
 * <a href="#LDBCursor.toList">LDBCursor\<T>.toList(limit?: number, skip?: number): Promise\<T[]></a>
 * <a href="#LDBCursor.count">LDBCursor\<T>.count(): Promise\<number></a>
 
-# API detials
+## API detials
 
-## static apis
+### static apis
 
 * <a id="localIndexed.use">localIndexed.use(indexedDB: IDBFactory): void</a>
     * param `indexedDB: IDBFactory`: the indexedDB factory
 
-    Set the global indexedDB factory to replace the default factory to create databases.
+    Set the global indexedDB factory.
 
     ```javascript
     import { indexedDB } from "fake-indexeddb"
@@ -150,7 +271,7 @@ await database.transaction(async () => {
     localIndexed.use(indexedDB)
     ```
 
-    **If no global factory is set and there is no default factory an exception will be thrown**
+    > You can also specify the current indexedDB factory using "localIndexed(database: string, indexedDB?: IDBFactory)".
 
 * <a id="localIndexed.databases">localIndexed.databases(): Promise\<IDBDatabaseInfo[]></a>
     * return `Promise<IDBDatabaseInfo[]>`: result of database info
@@ -191,7 +312,7 @@ await database.transaction(async () => {
     const bo = await localIndexed.delete("database") // true
     ```
 
-    **`localIndexed.delete()` always return true as long as there is no exception.**
+    > `localIndexed.delete()` always return true as long as there is no exception.
 
 * <a id="localIndexed.exists">localIndexed.exists(database: string, indexedDB?: IDBFactory): Promise\<boolean></a>
     * param `database: string`: database name
@@ -217,7 +338,7 @@ await database.transaction(async () => {
 
     Get database version.
 
-    `localIndexed.version()` will return `0` if database does not exist.
+    > `localIndexed.version()` will return `0` if database does not exist.
 
     ```javascript
     import localIndexed from "@focme/local-indexed"
@@ -231,7 +352,7 @@ await database.transaction(async () => {
     console.log(version) // 1
     ```
 
-## LDBIndexed
+### localIndexed
 
 * <a id="localIndexed">localIndexed(database: string, indexedDB?: IDBFactory): LDBIndexed</a>
     * param `database: string`: database name
@@ -246,7 +367,9 @@ await database.transaction(async () => {
     const indexed = localIndexed("database") // localIndexed object
     ```
 
-### attributes
+### LDBIndexed
+
+**attributes**
 
 * <a id="LDBIndexed.name">LDBIndexed.name: string</a>
 
@@ -260,7 +383,7 @@ await database.transaction(async () => {
     console.log(indexed.name) // database
     ```
 
-### detial apis
+**detial apis**
 
 * <a id="LDBIndexed.version">LDBIndexed.version(): Promise\<number></a>
     * return `Promise<number>`: database version
@@ -297,7 +420,7 @@ await database.transaction(async () => {
     console.log(stores) // ["store"]
     ```
 
-### transaction apis
+**transaction apis**
 
 * <a id="LDBIndexed.upgrade">LDBIndexed.upgrade(callback?: (event: LDBUpgradeEvent) => void | Promise\<void>): Promise\<void></a>
     * param `callback: (event: LDBUpgradeEvent) => void | Promise\<void>`: upgrade callback
@@ -342,10 +465,10 @@ await database.transaction(async () => {
     console.log(endVersion) // 4
     ```
 
-    **In most cases you don't need to pay special attention to the version parameter,**
-    **unless you need a full control of the upgradation**
+    In most cases you don't need to pay special attention to the version parameter,
+    unless you need a full control of the upgradation
 
-    **`LDBUpgradeEvent` is not a `Event`.**
+    > `LDBUpgradeEvent` is not a `Event`.
 
 * <a id="LDBIndexed.upgrade2">LDBIndexed.upgrade(version: number, callback?: (event: LDBUpgradeEvent) => void | Promise\<void>): Promise\<void></a>
     * param `version: number`: new version to upgrade
@@ -354,7 +477,7 @@ await database.transaction(async () => {
 
     Upgrade database to the specified version.
 
-    **The new version number must be bigger than the old version number.**
+    The new version number must be bigger than the old version number.
 
     ```javascript
     import localIndexed from "@focme/local-indexed"
@@ -362,113 +485,109 @@ await database.transaction(async () => {
     const indexed = localIndexed("database")
 
     await indexed.upgrade() // upgrade to version 1
-
-    await indexed.upgrade(1, () => {}) // throw error
-
-    await indexed.upgrade(5, () => {}) // correct
+    await indexed.upgrade(1) // throw error
+    await indexed.upgrade(5) // correct
 
     const version = await indexed.version()
     console.log(version) // 5
     ```
 
-    **All of collection apis can be used in `LDBIndexed.upgrade()` callback function,** 
-    such as:
+    All of collection apis can be used in `LDBIndexed.upgrade()` callback function. Such as:
 
-    Create stores indexes or insert values.
+    1. Create stores indexes or insert values.
 
-    ```javascript
-    import localIndexed from "@focme/local-indexed"
+        ```javascript
+        import localIndexed from "@focme/local-indexed"
 
-    const indexed = localIndexed("database")
-    const classes = indexed.collection("classes")
-    const classmates = indexed.collection("classmates")
+        const indexed = localIndexed("database")
+        const classes = indexed.collection("classes")
+        const classmates = indexed.collection("classmates")
 
-    // version 1
-    await indexed.upgrade(async () => {
-        // create store
-        classes.create({ keyPath: "id" })
-        classmates.create({ keyPath: "id" })
+        // version 1
+        await indexed.upgrade(async () => {
+            // create store
+            classes.create({ keyPath: "id" })
+            classmates.create({ keyPath: "id" })
 
-        // create index
-        classes.createIndex("grade")
-        classmates.createIndex("age")
-        classmates.createIndex("birth")
+            // create index
+            classes.createIndex("grade")
+            classmates.createIndex("age")
+            classmates.createIndex("birth")
 
-        // insert valeus
-        await classes.insert([...])
-        await classmates.insert([...])
-    })
-    ```
-
-    Alter table or update values.
-
-    ```javascript
-    import localIndexed from "@focme/local-indexed"
-
-    const indexed = localIndexed("database")
-    const classes = indexed.collection("classes")
-    const classmates = indexed.collection("classmates")
-
-    // version 1
-    await indexed.upgrade(() => {
-        // create store
-        classes.create()
-        classmates.create()
-    })
-
-    // version 2
-    await indexed.upgrade(async () => {
-        // get all values
-        const classesList = await classes.find()
-        const classmatesList = await classmates.find()
-
-        // alter store
-        classes.alter({
-            keyPath: "grade",
-            autoIncrement: true,
-            indexes: {
-                grade: { unique: false }
-            }
+            // insert valeus
+            await classes.insert([...])
+            await classmates.insert([...])
         })
-        classmates.alter({
-            keyPath: "id",
-            autoIncrement: true,
-            indexes: {
-                age: { unique: false },
-                birth: { unique: false }
-            }
+        ```
+
+    2. Alter table or update values.
+
+        ```javascript
+        import localIndexed from "@focme/local-indexed"
+
+        const indexed = localIndexed("database")
+        const classes = indexed.collection("classes")
+        const classmates = indexed.collection("classmates")
+
+        // version 1
+        await indexed.upgrade(() => {
+            // create store
+            classes.create()
+            classmates.create()
         })
 
-        // update values
-        await classes.insert(classesList.map(() => ({})))
-        await classmates.insert(classmatesList.map(() => ({})))
-    })
-    ```
+        // version 2
+        await indexed.upgrade(async () => {
+            // get all values
+            const classesList = await classes.find()
+            const classmatesList = await classmates.find()
 
-    And create cursor.
+            // alter store
+            classes.alter({
+                keyPath: "grade",
+                autoIncrement: true,
+                indexes: {
+                    grade: { unique: false }
+                }
+            })
+            classmates.alter({
+                keyPath: "id",
+                autoIncrement: true,
+                indexes: {
+                    age: { unique: false },
+                    birth: { unique: false }
+                }
+            })
 
-    ```javascript
-    import localIndexed from "@focme/local-indexed"
+            // update values
+            await classes.insert(classesList.map(() => ({})))
+            await classmates.insert(classmatesList.map(() => ({})))
+        })
+        ```
 
-    const indexed = localIndexed("database")
-    const classmates = indexed.collection("classmates")
+    3. And create cursor.
 
-    // version 1
-    await indexed.upgrade(() => {
-        // create store
-        classmates.create()
-    })
+        ```javascript
+        import localIndexed from "@focme/local-indexed"
 
-    // version 2
-    await indexed.upgrade(async () => {
-        const cursor = classmates.find(() => true)
-        // update values
-        await cursor.update(item => ({}))
-    })
-    ```
+        const indexed = localIndexed("database")
+        const classmates = indexed.collection("classmates")
 
-    **Collection upgrade apis can only be used in `LDBIndexed.upgrade()` callback function,**
-    such as:
+        // version 1
+        await indexed.upgrade(() => {
+            // create store
+            classmates.create()
+        })
+
+        // version 2
+        await indexed.upgrade(async () => {
+            const cursor = classmates.find(() => true)
+            // update values
+            await cursor.update(item => ({}))
+        })
+        ```
+
+    Collection upgrade apis can only be used in `LDBIndexed.upgrade()` callback function, such as:
     * `LDBCollection\<T>.create` 
     * `LDBCollection\<T>.drop` 
     * `LDBCollection\<T>.alter`  
@@ -477,7 +596,7 @@ await database.transaction(async () => {
 
     These apis require transaction mode `versionchange` so they cannot be used in other situations.
 
-    **Use `LDBIndexed.abort()` rollback upgrade.**
+    Use `LDBIndexed.abort()` rollback upgrade.
 
     ```javascript
     import localIndexed from "@focme/local-indexed"
@@ -504,7 +623,7 @@ await database.transaction(async () => {
 
     Create a transaction.
 
-    **Collection apis can be used in `LDBIndexed.transaction()` callback function except upgrade apis.**
+    Collection apis can be used in `LDBIndexed.transaction()` callback function except upgrade apis.
 
     ```javascript
     import localIndexed from "@focme/local-indexed"
@@ -531,7 +650,7 @@ await database.transaction(async () => {
     })
     ```
 
-    **The transaction callback will not be called if there are no stores in database。**
+    **The transaction callback will throw exception if there are no stores in database。**
 
     ```javascript
     import localIndexed from "@focme/local-indexed"
@@ -540,13 +659,14 @@ await database.transaction(async () => {
     const stores = await indexed.stores()
     console.log(stores) // []
 
+    // got error
     await indexed.transaction(() => {
         console.log(1) // will not log
         throw new Error() // will not throw
     })
     ```
 
-    **Use `LDBIndexed.abort()` rollback `LDBIndexed.transaction()`**
+    Use `LDBIndexed.abort()` rollback `LDBIndexed.transaction()`.
 
     ```javascript
     import localIndexed from "@focme/local-indexed"
@@ -629,7 +749,7 @@ await database.transaction(async () => {
 
     Actually most of the apis could close the database connection automatically, unless there are unexpected circumstances.
 
-### collection apis
+**collection apis**
 
 * <a id="LDBIndexed.collection">LDBIndexed.collection\<T>(store: string): LDBCollection\<T></a>
     * param `store: string`: store name
@@ -645,11 +765,11 @@ await database.transaction(async () => {
     const store = indexed.collection("store")
     ```
 
-## LDBCollection\<T>
+### LDBCollection\<T>
 
 Use `<a href="#LDBIndexed.collection">LDBIndexed.collection\<T>(store: string): LDBCollection\<T></a>` create a collection object.
 
-The generic type `T` should extends object but in fact the default value is any.
+The generic type `T` should extends object but the default value is any.
 
 ```typescript
 import localIndexed from "@focme/local-indexed"
@@ -662,13 +782,13 @@ const anyStore = indexed.collection("store") // LDBCollection<any>
 const typedStore = indexed.collection<Store>("store") // LDBCollection<Store>
 ```
 
-Actually `any` type value cannot be inserted into object store even though `IDBObjectStore.add(value: any, key?: IDBValidKey)` and `IDBObjectStore.put(value: any, key?: IDBValidKey)` both specify the `value` parameter type as any.
+> Actually the `any` type value cannot be inserted into object store even though `IDBObjectStore.add(value: any, key?: IDBValidKey)` and `IDBObjectStore.put(value: any, key?: IDBValidKey)` both specify the `value` parameter type as any.
 
-**Pay special attention to the fact that most collection apis will try to open a database connection.**
-**If the current database does not exist, they will try to create one.**
-**This may cause unexpected database versions that do not meet expectations.**
+> **Pay special attention to the fact that most collection apis will try to open a database connection.**
+> **If the current database does not exist, they will try to create one.**
+> **This may cause unexpected database versions that do not meet expectations.**
 
-### detial apis
+**detial apis**
 
 * <a id="LDBCollection.info">LDBCollection\<T>.info(): Promise\<LDBStoreInfo></a>
     * return `Promise<LDBStoreInfo>`: collection detials
@@ -739,7 +859,7 @@ Actually `any` type value cannot be inserted into object store even though `IDBO
     console.log(await store.exists()) // true
     ```
 
-### upgrade store apis
+**upgrade apis**
 
 These apis can only be used in `LDBIndexed.upgrade` callback function.
 
@@ -961,7 +1081,7 @@ These apis can only be used in `LDBIndexed.upgrade` callback function.
     console.log(info.indexes) // {}
     ```
 
-### collection apis
+**collection apis**
 
 * <a id="LDBCollection.insert">LDBCollection\<T>.insert\<K extends IDBValidKey>(value: any): Promise\<K></a>
     * param `value: any`: insert value
@@ -1404,7 +1524,7 @@ These apis can only be used in `LDBIndexed.upgrade` callback function.
     console.log(list[3]) // { id: 4, name: "name4", type: "type4" }
     console.log(list[4]) // { id: 5, name: "name5", type: "type5" }
 
-### collection cursor apis
+**cursor apis**
 
 * <a id="LDBCollection.find4">LDBCollection\<T>.find(filter: (item: T) => boolean): LDBCursor\<T></a>
     * param `filter: (item: T) => boolean`: cursor filter
@@ -1599,7 +1719,7 @@ These apis can only be used in `LDBIndexed.upgrade` callback function.
     console.log(indexPrevList[4]) // { id: 1, name: "name1", type: "type1" }
     ```
 
-## LDBCursor\<T>
+### LDBCursor\<T>
 
 Use <a href="#LDBCollection.find5">LDBCollection\<T>.find(option: LDBCollectionCursor\<T>): LDBCursor\<T></a> create a cursor object.
 
@@ -1659,7 +1779,8 @@ Use <a href="#LDBCollection.find5">LDBCollection\<T>.find(option: LDBCollectionC
     console.log(list[3]) // { id: 4, name: "name4", type: "type2" }
     console.log(list[4]) // { id: 5, name: "name5", type: "type1" }
     ```
-    return `true` in `formatter` function can stop the cursor traversal
+
+    Return `true` in `formatter` function can stop the cursor traversal.
 
     ```javascript
     import localIndexed from "@focme/local-indexed"
@@ -1749,7 +1870,7 @@ Use <a href="#LDBCollection.find5">LDBCollection\<T>.find(option: LDBCollectionC
     console.log(list[1]) // { id: 5, name: "name5", type: "type1" }
     ```
 
-    **`LDBCursor.delete` cannot be stoped**
+    > `LDBCursor.delete` cannot be stoped
 
 * <a id="LDBCursor.toList">LDBCursor\<T>.toList(limit?: number, skip?: number): Promise\<T[]></a>
     * param `limit: number`: limit quantity number
@@ -1812,8 +1933,8 @@ Use <a href="#LDBCollection.find5">LDBCollection\<T>.find(option: LDBCollectionC
     console.log(list5.map(item => item.id)) // [5, 7, 9]
     ```
 
-    **Cursors use events to traverse data in native javascript,**
-    **so this method is very inefficient when there is a lot of data.**
+    > Cursor use event to traverse data in native javascript,
+    > so this method is very inefficient when there is a lot of data.
 
 * <a id="LDBCursor.count">LDBCursor\<T>.count(): Promise\<number></a>
     * return `Promise<number>`: values quantity number
