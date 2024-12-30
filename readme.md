@@ -60,7 +60,7 @@ await database.upgrade(async () => {
     // create index
     store.createIndex("name", { unique: false })
 
-    // init valeus
+    // init values
     await store.insert([
         { id: 1, name: "John" },
         { id: 2, name: "Anny" }
@@ -173,7 +173,7 @@ await store.remove(IDBKeyRange.bound(1, 10))
 
 ### Use `cursor`
 
-With a cursor object you can select, update and delete valeus.
+With a cursor object you can select, update and delete values.
 
 A `cursor` is a process of traversing data that can provide more precise matching rules.
 
@@ -209,7 +209,7 @@ And all types starting with "IDB" are built-in browser environments.
 ### static apis
 
 * <a href="#localIndexed.use">localIndexed.use(indexedDB: IDBFactory): void</a>
-* <a href="#localIndexed.databases">localIndexed.databases(): Promise\<IDBDatabaseInfo[]></a>
+* <a href="#localIndexed.databases">localIndexed.databases(indexedDB?: IDBFactory): Promise\<IDBDatabaseInfo[]></a>
 * <a href="#localIndexed.delete">localIndexed.delete(database: string, indexedDB?: IDBFactory): Promise\<boolean></a>
 * <a href="#localIndexed.exists">localIndexed.exists(database: string, indexedDB?: IDBFactory): Promise\<boolean></a>
 * <a href="#localIndexed.version">localIndexed.version(database: string, indexedDB?: IDBFactory): Promise\<number></a>
@@ -218,7 +218,7 @@ And all types starting with "IDB" are built-in browser environments.
 
 * <a href="#localIndexed">localIndexed(database: string, indexedDB?: IDBFactory): LDBIndexed</a>
 
-### LDBIndexed
+### <a href="#LDBIndexed">LDBIndexed</a>
 
 **attributes**
 
@@ -241,7 +241,7 @@ And all types starting with "IDB" are built-in browser environments.
 
 * <a href="#LDBIndexed.collection">LDBIndexed.collection\<T>(store: string): LDBCollection\<T></a>
 
-### LDBCollection\<T>
+### <a href="#LDBCollection">LDBCollection\<T></a>
 
 **detail apis**
 
@@ -274,7 +274,7 @@ And all types starting with "IDB" are built-in browser environments.
 * <a href="#LDBCollection.find4">LDBCollection\<T>.find(filter: (item: T) => boolean): LDBCursor\<T></a>
 * <a href="#LDBCollection.find5">LDBCollection\<T>.find(option: LDBCollectionCursor\<T>): LDBCursor\<T></a>
 
-### LDBCursor\<T>
+### <a href="#LDBCursor">LDBCursor\<T></a>
 
 * <a href="#LDBCursor.update">LDBCursor\<T>.update\<K extends IDBValidKey>(formatter: (item: T) => any): Promise\<K[]></a>
 * <a href="#LDBCursor.remove">LDBCursor\<T>.remove(): Promise\<number></a>
@@ -300,7 +300,8 @@ And all types starting with "IDB" are built-in browser environments.
 
     > You can also specify the current indexedDB factory using "localIndexed(database: string, indexedDB?: IDBFactory)".
 
-* <a id="localIndexed.databases">localIndexed.databases(): Promise\<IDBDatabaseInfo[]></a>
+* <a id="localIndexed.databases">localIndexed.databases(indexedDB?: IDBFactory): Promise\<IDBDatabaseInfo[]></a>
+    * param `indexedDB: IDBFactory`: the indexedDB factory
     * return `Promise<IDBDatabaseInfo[]>`: result of database info
 
         ```typescript
@@ -394,7 +395,7 @@ And all types starting with "IDB" are built-in browser environments.
     const indexed = localIndexed("database") // localIndexed object
     ```
 
-### LDBIndexed
+### <a id="LDBIndexed">LDBIndexed</a>
 
 **attributes**
 
@@ -541,7 +542,7 @@ And all types starting with "IDB" are built-in browser environments.
             classmates.createIndex("age")
             classmates.createIndex("birth")
 
-            // insert valeus
+            // insert values
             await classes.insert([...])
             await classmates.insert([...])
         })
@@ -792,9 +793,9 @@ And all types starting with "IDB" are built-in browser environments.
     const store = indexed.collection("store")
     ```
 
-### LDBCollection\<T>
+### <a id="LDBCollection">LDBCollection\<T></a>
 
-Use `<a href="#LDBIndexed.collection">LDBIndexed.collection\<T>(store: string): LDBCollection\<T></a>` create a collection object.
+Use <a href="#LDBIndexed.collection">LDBIndexed.collection\<T>(store: string): LDBCollection\<T></a> create a collection object.
 
 The generic type `T` should extends object but the default value is any.
 
@@ -1746,7 +1747,7 @@ These apis can only be used in `LDBIndexed.upgrade` callback function.
     console.log(indexPrevList[4]) // { id: 1, name: "name1", type: "type1" }
     ```
 
-### LDBCursor\<T>
+### <a id="LDBCursor">LDBCursor\<T></a>
 
 Use <a href="#LDBCollection.find5">LDBCollection\<T>.find(option: LDBCollectionCursor\<T>): LDBCursor\<T></a> create a cursor object.
 
