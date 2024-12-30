@@ -4,8 +4,35 @@ A lib for indexeddb.
 
 ## Install
 
+### Use npm module
+
 ```shell
-npm instal @focme/local-indexed --save-dev
+npm instal @focme/local-indexed --save
+```
+
+```javascript
+// esm
+import localIndexed from "@focme/local-indexed"
+
+const database = localIndexed("database-name")
+```
+
+```javascript
+// cjs
+const localIndexed = require("@focme/local-indexed")
+
+const database = localIndexed("database-name")
+```
+
+### Use release package
+
+Download the release package.
+
+```html
+<script src="path-to-the-package-location"/>
+<script>
+const database = window.localIndexed("database-name")
+</script>
 ```
 
 ## Usage
