@@ -1,6 +1,6 @@
 {
     "name": "@focme/local-indexed",
-    "version": "0.0.1",
+    "version": "1.0.0",
     "description": "a lib for indexeddb",
     "keywords": [
         "indexeddb"
