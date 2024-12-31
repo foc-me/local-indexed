@@ -451,7 +451,7 @@ And all types starting with "IDB" are built-in browser environments.
 **transaction apis**
 
 * <a id="LDBIndexed.upgrade">LDBIndexed.upgrade(callback?: (event: LDBUpgradeEvent) => void | Promise\<void>): Promise\<void></a>
-    * param `callback: (event: LDBUpgradeEvent) => void | Promise\<void>`: upgrade callback
+    * param `callback: (event: LDBUpgradeEvent) => void | Promise<void>`: upgrade callback
     * type `LDBUpgradeEvent: { oldVersion: number, newVersion?: number }`: upgrade version info
 
     Upgrade databse.
@@ -500,7 +500,7 @@ And all types starting with "IDB" are built-in browser environments.
 
 * <a id="LDBIndexed.upgrade2">LDBIndexed.upgrade(version: number, callback?: (event: LDBUpgradeEvent) => void | Promise\<void>): Promise\<void></a>
     * param `version: number`: new version to upgrade
-    * param `callback: (event: LDBUpgradeEvent) => void | Promise\<void>`: upgrade callback
+    * param `callback: (event: LDBUpgradeEvent) => void | Promise<void>`: upgrade callback
     * type `LDBUpgradeEvent: { oldVersion: number, newVersion?: number }`: upgrade version info
 
     Upgrade database to the specified version.
@@ -616,11 +616,11 @@ And all types starting with "IDB" are built-in browser environments.
         ```
 
     Collection upgrade apis can only be used in `LDBIndexed.upgrade()` callback function, such as:
-    * `LDBCollection\<T>.create` 
-    * `LDBCollection\<T>.drop` 
-    * `LDBCollection\<T>.alter`  
-    * `LDBCollection\<T>.createIndex` 
-    * `LDBCollection\<T>.dropIndex`
+    * `LDBCollection<T>.create` 
+    * `LDBCollection<T>.drop` 
+    * `LDBCollection<T>.alter`  
+    * `LDBCollection<T>.createIndex` 
+    * `LDBCollection<T>.dropIndex`
 
     These apis require transaction mode `versionchange` so they cannot be used in other situations.
 
@@ -1160,8 +1160,8 @@ These apis can only be used in `LDBIndexed.upgrade` callback function.
     const list = await store.find()
     console.log(list) // [{ id: 1, name: "name1", type: "type1" }]
 
-    // insert value
-    const insertId = await store.insert({ id: 1, name: "name1", type: "type1" }) // throw error
+    // insert value throw error
+    const insertId = await store.insert({ id: 1, name: "name1", type: "type1" })
     ```
 
 * <a id="LDBCollection.insert2">LDBCollection\<T>.insert\<K extends IDBValidKey>(values: any[]): Promise\<K[]></a>
