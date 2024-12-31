@@ -24,6 +24,19 @@ module.exports = [
     {
         input: "./src/index.ts",
         output: {
+            file: `./dist/release/${globalName}.${package.version}.js`,
+            format: "umd",
+            name: globalName,
+            banner
+        },
+        plugins: [
+            typescriptPlugin(),
+            cleanup({ extensions: "ts" })
+        ]
+    },
+    {
+        input: "./src/index.ts",
+        output: {
             file: `./dist/release/${globalName}.${package.version}.min.js`,
             format: "umd",
             name: globalName,
