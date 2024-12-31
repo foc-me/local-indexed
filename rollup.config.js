@@ -24,7 +24,7 @@ module.exports = [
     {
         input: "./src/index.ts",
         output: {
-            file: `./dist/release/${globalName}.${package.version}.js`,
+            file: `./dist/release/${globalName}.${package.version}.umd.js`,
             format: "umd",
             name: globalName,
             banner
@@ -37,7 +37,7 @@ module.exports = [
     {
         input: "./src/index.ts",
         output: {
-            file: `./dist/release/${globalName}.${package.version}.min.js`,
+            file: `./dist/release/${globalName}.${package.version}.umd.min.js`,
             format: "umd",
             name: globalName,
             banner
