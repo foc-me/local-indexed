@@ -1737,7 +1737,11 @@ These apis can only be used in `LDBIndexed.upgrade` callback function.
     console.log(indexList[4]) // { id: 4, name: "name4", type: "type2" }
 
     // get all values use index cursor with direction prev
-    const indexPrevCursor = store.find({ filter: () => true, sort: "type", order: "prev" })
+    const indexPrevCursor = store.find({
+        filter: () => true,
+        sort: "type",
+        order: "prev"
+    })
     const indexPrevList = await indexPrevCursor.toList()
     console.log(indexPrevList.length) // 5
     console.log(indexPrevList[0]) // { id: 4, name: "name4", type: "type2" }
