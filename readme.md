@@ -26,7 +26,7 @@ const database = localIndexed("database-name")
 
 ### Use release package
 
-Download the <a href="https://github.com/foc-me/local-indexed/releases">release package</a>.
+Download the umd package from <a href="https://github.com/foc-me/local-indexed/releases">releases</a>.
 
 ```html
 <script src="path-to-the-package-location"/>
