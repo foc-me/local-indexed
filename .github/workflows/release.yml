@@ -20,7 +20,7 @@ jobs:
           draft: false
           prerelease: false
           files: dist/release/*
-      - runs: |
+      - run: |
           cd dist
           npm publish --access public
         env:
