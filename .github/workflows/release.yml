@@ -20,3 +20,8 @@ jobs:
           draft: false
           prerelease: false
           files: dist/release/*
+      - runs: |
+          cd dist
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
