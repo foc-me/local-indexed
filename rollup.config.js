@@ -66,7 +66,10 @@ module.exports = [
             "name",
             "version",
             ["main", "dist/index.js"],
-            ["module", "esm/index.js"],
+            ["exports", {
+                import: "./esm/index.js",
+                default: "./dist/index.js"
+            }],
             ["types", "type"],
             "description",
             "keywords",
