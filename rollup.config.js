@@ -65,14 +65,18 @@ module.exports = [
         pick([
             "name",
             "version",
-            ["main", "dist/index.js"],
-            ["exports", {
-                import: "./esm/index.js",
-                default: "./dist/index.js"
-            }],
-            ["types", "type"],
             "description",
             "keywords",
+            ["main", "./dist/index.js"],
+            ["module", "./esm/index.js"],
+            ["types", "./type/index.d.ts"],
+            ["exports", {
+                ".": {
+                    types: "./type/index.d.ts",
+                    import: "./esm/index.js",
+                    require: "./dist/index.js"
+                }
+            }],
             ["files", ["dist", "esm", "type", "LICENSE", "package.json", "readme.md"]],
             "author",
             "repository",
