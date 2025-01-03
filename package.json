@@ -5,8 +5,7 @@
     "keywords": [
         "indexeddb"
     ],
-    "main": "index.js",
-    "author": "foc-me",
+    "author": "focme",
     "license": "MIT",
     "private": true,
     "repository": {
