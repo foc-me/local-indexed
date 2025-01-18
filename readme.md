@@ -7,7 +7,7 @@ A lib for indexeddb.
 ### Use npm module
 
 ```shell
-npm instal @focme/local-indexed --save
+npm install @focme/local-indexed --save
 ```
 
 ```javascript
