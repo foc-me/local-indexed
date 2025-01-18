@@ -1,6 +1,6 @@
 {
     "name": "@focme/local-indexed",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "description": "a lib for indexeddb",
     "keywords": [
         "indexeddb"
@@ -19,7 +19,7 @@
         "test:watch": "jest --watch --no-coverage"
     },
     "devDependencies": {
-        "@focme/rollup-plugin-pick": "^0.0.3",
+        "@focme/rollup-plugin-pick": "^1.0.0",
         "@rollup/plugin-terser": "^0.4.4",
         "@rollup/plugin-typescript": "^12.1.2",
         "@types/jest": "^29.5.14",
